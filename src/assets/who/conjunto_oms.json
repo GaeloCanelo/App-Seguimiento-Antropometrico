@@ -1,0 +1,7 @@
+{
+  "id_conjunto": "OMS_2006_V1",
+  "version": "WHO Child Growth Standards 2006 (anthro master)",
+  "fuente_url": "https://github.com/worldhealthorganization/anthro/tree/master/data-raw/growthstandards",
+  "hash_archivos": "5746e7b3c502b691bf22f9f7eb8066ed6102b43b98d9b3a00e56748edb7e661c",
+  "fecha_importacion": "2026-11-17T08:44:42Z"
+}
