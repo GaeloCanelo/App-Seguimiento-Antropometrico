@@ -1,0 +1,155 @@
+[
+  {
+    "id": "RN_M_NORMAL",
+    "sexo": "M",
+    "edad_dias": 0,
+    "peso_kg": 3.3,
+    "longitud_talla_cm": 49.9,
+    "perimetro_cefalico_cm": 34.5,
+    "posicion_medicion": "ACOSTADO",
+    "talla_ajustada_esperada": 49.9,
+    "expected_z": {
+      "P_E": -0.0954,
+      "T_E": 0.0083,
+      "P_T": -0.0255,
+      "PC_E": 0.0301,
+      "IMC_E": -0.121
+    }
+  },
+  {
+    "id": "RN_F_ATIPICO_ALTO",
+    "sexo": "F",
+    "edad_dias": 1,
+    "peso_kg": 10.37,
+    "longitud_talla_cm": 50.0,
+    "perimetro_cefalico_cm": 35.0,
+    "posicion_medicion": "ACOSTADO",
+    "talla_ajustada_esperada": 50.0,
+    "expected_z": {
+      "P_E": 12.4609,
+      "T_E": 0.3663,
+      "P_T": 16.9748,
+      "PC_E": 0.8672,
+      "IMC_E": 18.2907
+    }
+  },
+  {
+    "id": "PA02_18M_DE_PIE_AJUSTE",
+    "sexo": "M",
+    "edad_dias": 548,
+    "peso_kg": 10.5,
+    "longitud_talla_cm": 82.0,
+    "perimetro_cefalico_cm": 46.0,
+    "posicion_medicion": "DE_PIE",
+    "talla_ajustada_esperada": 82.7,
+    "expected_z": {
+      "P_E": -0.3684,
+      "T_E": 0.1621,
+      "P_T": -0.5426,
+      "PC_E": -1.0342,
+      "IMC_E": -0.6432
+    }
+  },
+  {
+    "id": "PA03_12M_PESO_ATIPICO",
+    "sexo": "M",
+    "edad_dias": 365,
+    "peso_kg": 25.0,
+    "longitud_talla_cm": 76.0,
+    "perimetro_cefalico_cm": 46.0,
+    "posicion_medicion": "ACOSTADO",
+    "talla_ajustada_esperada": 76.0,
+    "expected_z": {
+      "P_E": 11.5843,
+      "T_E": 0.1098,
+      "P_T": 14.4885,
+      "PC_E": -0.0496,
+      "IMC_E": 14.9705
+    }
+  },
+  {
+    "id": "CORTE_24M_ACOSTADO_AJUSTE",
+    "sexo": "F",
+    "edad_dias": 731,
+    "peso_kg": 11.8,
+    "longitud_talla_cm": 86.0,
+    "perimetro_cefalico_cm": 47.2,
+    "posicion_medicion": "ACOSTADO",
+    "talla_ajustada_esperada": 85.3,
+    "expected_z": {
+      "P_E": 0.2204,
+      "T_E": -0.1332,
+      "P_T": 0.3187,
+      "PC_E": 0.0111,
+      "IMC_E": 0.3889
+    }
+  },
+  {
+    "id": "NINO_60M_TOPE",
+    "sexo": "M",
+    "edad_dias": 1826,
+    "peso_kg": 18.3,
+    "longitud_talla_cm": 110.0,
+    "perimetro_cefalico_cm": 50.7,
+    "posicion_medicion": "DE_PIE",
+    "talla_ajustada_esperada": 110.0,
+    "expected_z": {
+      "P_E": -0.0142,
+      "T_E": 0.0088,
+      "P_T": -0.1335,
+      "PC_E": -0.0249,
+      "IMC_E": -0.0514
+    }
+  },
+  {
+    "id": "WHO_TEST_GIRL_1522D",
+    "sexo": "F",
+    "edad_dias": 1522,
+    "peso_kg": 17.0,
+    "longitud_talla_cm": 105.0,
+    "perimetro_cefalico_cm": 49.5,
+    "posicion_medicion": "DE_PIE",
+    "talla_ajustada_esperada": 105.0,
+    "expected_z": {
+      "P_E": 0.24,
+      "T_E": 0.2498,
+      "P_T": 0.1406,
+      "PC_E": 0.0408,
+      "IMC_E": 0.117
+    }
+  },
+  {
+    "id": "PT_NO_APLICA_MUY_BAJA_TALLA",
+    "sexo": "F",
+    "edad_dias": 800,
+    "peso_kg": 7.0,
+    "longitud_talla_cm": 60.0,
+    "perimetro_cefalico_cm": 45.0,
+    "posicion_medicion": "DE_PIE",
+    "talla_ajustada_esperada": 60.0,
+    "expected_z": {
+      "P_E": -4.3747,
+      "T_E": -8.2783,
+      "P_T": null,
+      "PC_E": -1.7789,
+      "IMC_E": 2.4356
+    }
+  },
+  {
+    "id": "EXTREMO_NEGATIVO_DESNUTRICION",
+    "sexo": "M",
+    "edad_dias": 400,
+    "peso_kg": 4.8,
+    "longitud_talla_cm": 65.0,
+    "perimetro_cefalico_cm": 41.0,
+    "posicion_medicion": "ACOSTADO",
+    "talla_ajustada_esperada": 65.0,
+    "expected_z": {
+      "P_E": -5.7625,
+      "T_E": -4.9646,
+      "P_T": -5.0471,
+      "PC_E": -4.1563,
+      "IMC_E": -4.8883
+    }
+  }
+]
