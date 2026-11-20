@@ -1,41 +1,63 @@
 import { useLocalSearchParams } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { CATALOGO_INDICADORES, CodigoIndicador } from '../../../domain';
 import {
-  CATALOGO_INDICADORES,
-  CodigoIndicador,
-  generarSerieCurvaReferencia,
-} from '../../../domain';
+  PuntoPacienteSvg,
+  VistaCurva,
+  construirGeometriaCurvaOMS,
+  inferirTablaPTInicial,
+} from '../../../services/growthChartBuilder';
 import { useResultsViewModel } from '../../../viewmodels/useResultsViewModel';
 import { ClinicalDisclaimerBanner } from '../../../views/components/ClinicalDisclaimerBanner';
+import { GrowthCurveSvg } from '../../../views/components/GrowthCurveSvg';
 import { theme } from '../../../views/theme/tokens';
 
 /**
- * CU-18: Visualización de curvas de crecimiento OMS (Puntajes Z vs Percentiles).
- * TODO(Integrante 6): Renderizar el componente vectorial SVG interactivo con `react-native-svg`
- * consumiendo `serieReferencia` y los puntos cronológicos de `historialConsultas`.
+ * CU-18: Visualización interactiva de curvas de crecimiento OMS (Puntajes Z y Percentiles).
  */
 export default function CurvasCrecimientoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { paciente, historialConsultas, cargando } = useResultsViewModel(undefined, id);
+
   const [indicador, setIndicador] = useState<CodigoIndicador>('P_E');
-  const [vista, setVista] = useState<'Z' | 'PERCENTIL'>('Z');
+  const [vista, setVista] = useState<VistaCurva>('Z');
+  const [tipoTablaPT, setTipoTablaPT] = useState<'LONGITUD' | 'TALLA'>('LONGITUD');
+  const [puntoSeleccionado, setPuntoSeleccionado] = useState<PuntoPacienteSvg | null>(null);
 
-  const niveles = useMemo(
-    () => (vista === 'Z' ? [-3, -2, -1, 0, 1, 2, 3] : [-1.881, -1.036, 0, 1.036, 1.881]),
-    [vista],
-  );
+  useEffect(() => {
+    if (historialConsultas.length > 0) {
+      setTipoTablaPT(inferirTablaPTInicial(historialConsultas));
+    }
+  }, [historialConsultas]);
 
-  const serieReferencia = useMemo(() => {
+  const geometria = useMemo(() => {
     if (!paciente) return null;
-    return generarSerieCurvaReferencia({
+    return construirGeometriaCurvaOMS({
       indicador,
       sexo: paciente.sexo,
-      zNiveles: niveles,
+      vista,
+      fechaNacimiento: paciente.fecha_nacimiento,
+      consultas: historialConsultas,
+      tipoTablaPT,
     });
-  }, [indicador, niveles, paciente]);
+  }, [historialConsultas, indicador, paciente, tipoTablaPT, vista]);
 
-  if (cargando || !paciente) {
+  // Seleccionar el punto más reciente automáticamente al cambiar indicador o vista
+  useEffect(() => {
+    if (!geometria || geometria.puntosPaciente.length === 0) {
+      setPuntoSeleccionado(null);
+      return;
+    }
+    setPuntoSeleccionado((prev) => {
+      const coincidencia = prev
+        ? geometria.puntosPaciente.find((p) => p.id_consulta === prev.id_consulta)
+        : null;
+      return coincidencia ?? geometria.puntosPaciente[geometria.puntosPaciente.length - 1];
+    });
+  }, [geometria]);
+
+  if (cargando || !paciente || !geometria) {
     return (
       <View style={styles.center}>
         <Text style={styles.muted}>Cargando curvas de crecimiento...</Text>
@@ -46,6 +68,10 @@ export default function CurvasCrecimientoScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <ClinicalDisclaimerBanner />
+
+      <Text style={styles.patientHeader}>
+        {paciente.folio_clinico} · {paciente.nombre} ({paciente.sexo === 'M' ? 'Niño' : 'Niña'})
+      </Text>
 
       <View style={styles.chipRow}>
         {CATALOGO_INDICADORES.map((item) => (
@@ -71,7 +97,7 @@ export default function CurvasCrecimientoScreen() {
           <Pressable
             key={op}
             onPress={() => setVista(op)}
-            style={[styles.chip, vista === op && styles.chipSelected]}
+            style={[styles.chip, styles.flexChip, vista === op && styles.chipSelected]}
           >
             <Text style={[styles.chipText, vista === op && styles.chipTextSelected]}>
               {op === 'Z' ? 'Puntajes Z (-3 a +3)' : 'Percentiles (P3–P97)'}
@@ -80,24 +106,77 @@ export default function CurvasCrecimientoScreen() {
         ))}
       </View>
 
-      <View style={styles.chartPlaceholder}>
-        <Text style={styles.chartTitle}>
-          Curva OMS ({indicador}) · {paciente.sexo === 'M' ? 'Niños' : 'Niñas'} · Vista {vista}
-        </Text>
-        <Text style={styles.muted}>
-          Puntos de referencia calculados: {serieReferencia?.eje.length ?? 0} · Consultas del
-          paciente: {historialConsultas.length}
-        </Text>
-      </View>
+      {indicador === 'P_T' ? (
+        <View style={styles.toggleRow}>
+          {(['LONGITUD', 'TALLA'] as const).map((tab) => (
+            <Pressable
+              key={tab}
+              onPress={() => setTipoTablaPT(tab)}
+              style={[styles.chip, styles.flexChip, tipoTablaPT === tab && styles.chipSelected]}
+            >
+              <Text style={[styles.chipText, tipoTablaPT === tab && styles.chipTextSelected]}>
+                {tab === 'LONGITUD' ? 'Longitud (< 24m · 45–110 cm)' : 'Talla (≥ 24m · 65–120 cm)'}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+
+      <GrowthCurveSvg
+        geometria={geometria}
+        idConsultaSeleccionada={puntoSeleccionado?.id_consulta}
+        onSeleccionarPunto={setPuntoSeleccionado}
+      />
+
+      <Text style={styles.hint}>Toca un punto de la gráfica para inspeccionar esa consulta.</Text>
+
+      {puntoSeleccionado ? (
+        <View style={styles.detailCard}>
+          <View style={styles.detailTop}>
+            <Text style={styles.detailTitle}>
+              Consulta {puntoSeleccionado.fecha_consulta} ({puntoSeleccionado.edadTexto})
+            </Text>
+            {puntoSeleccionado.esAtipico ? (
+              <Text style={styles.atipicoTag}>Atípico</Text>
+            ) : null}
+          </View>
+          <Text style={styles.detailMetric}>
+            Valor: {puntoSeleccionado.valorObservado.toFixed(2)} {geometria.unidadY} · Puntaje Z:{' '}
+            {puntoSeleccionado.puntajeZ.toFixed(2)} · Percentil:{' '}
+            {puntoSeleccionado.percentil.toFixed(1)}
+          </Text>
+          <Text style={[styles.detailClasif, { color: puntoSeleccionado.clasificacionColor }]}>
+            {puntoSeleccionado.clasificacionEtiqueta}
+          </Text>
+        </View>
+      ) : null}
+
+      {geometria.puntosOmitidos.length > 0 ? (
+        <View style={styles.omittedBox}>
+          <Text style={styles.omittedTitle}>Consultas no graficadas en este indicador:</Text>
+          {geometria.puntosOmitidos.map((om) => (
+            <Text key={om.id_consulta} style={styles.omittedItem}>
+              • {om.fecha_consulta}: {om.motivo}
+            </Text>
+          ))}
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: theme.spacing.md },
+  container: { padding: theme.spacing.md, paddingBottom: theme.spacing.xl },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  patientHeader: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
+  },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: theme.spacing.sm },
-  toggleRow: { flexDirection: 'row', gap: 8, marginBottom: theme.spacing.md },
+  toggleRow: { flexDirection: 'row', gap: 8, marginBottom: theme.spacing.sm },
+  flexChip: { flex: 1, alignItems: 'center' },
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -107,19 +186,44 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
   },
   chipSelected: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primaryLight },
-  chipText: { fontSize: 13, fontWeight: '600', color: theme.colors.text },
+  chipText: { fontSize: 12, fontWeight: '600', color: theme.colors.text },
   chipTextSelected: { color: theme.colors.primary },
-  chartPlaceholder: {
+  hint: {
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: theme.spacing.md,
+  },
+  detailCard: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    padding: theme.spacing.lg,
-    minHeight: 280,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
   },
-  chartTitle: { fontSize: 15, fontWeight: '700', color: theme.colors.primary, textAlign: 'center' },
-  muted: { fontSize: 13, color: theme.colors.textMuted, textAlign: 'center' },
+  detailTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  detailTitle: { fontSize: 14, fontWeight: '700', color: theme.colors.primary },
+  atipicoTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.colors.danger,
+    backgroundColor: '#FDECEA',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  detailMetric: { fontSize: 13, color: theme.colors.text, marginTop: 6 },
+  detailClasif: { fontSize: 14, fontWeight: '700', marginTop: 4 },
+  omittedBox: {
+    backgroundColor: '#FFF8E1',
+    borderRadius: theme.radius.sm,
+    padding: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: '#FFE082',
+  },
+  omittedTitle: { fontSize: 13, fontWeight: '700', color: theme.colors.text, marginBottom: 4 },
+  omittedItem: { fontSize: 12, color: theme.colors.textMuted, marginTop: 2 },
+  muted: { fontSize: 13, color: theme.colors.textMuted },
 });
