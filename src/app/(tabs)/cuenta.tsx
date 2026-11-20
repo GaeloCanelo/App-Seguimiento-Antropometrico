@@ -1,10 +1,11 @@
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, StyleSheet, Text, View } from 'react-native';
 import { CambiosPendientesError } from '../../data';
 import { useApp } from '../../viewmodels/AppProvider';
 import { FormField } from '../../views/components/FormField';
 import { PrimaryButton } from '../../views/components/PrimaryButton';
+import { ResponsiveContainer } from '../../views/components/ResponsiveContainer';
 import { SyncStatusBadge } from '../../views/components/SyncStatusBadge';
 import { theme } from '../../views/theme/tokens';
 
@@ -172,7 +173,7 @@ export default function CuentaScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ResponsiveContainer variant="form">
       <View style={styles.syncRow}>
         <SyncStatusBadge
           hayConexion={hayConexion}
@@ -280,12 +281,11 @@ export default function CuentaScreen() {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </ResponsiveContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: theme.spacing.md, paddingBottom: theme.spacing.xl },
   syncRow: { marginBottom: theme.spacing.md },
   card: {
     backgroundColor: theme.colors.surface,

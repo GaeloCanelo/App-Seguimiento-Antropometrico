@@ -1,11 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { PosicionMedicion } from '../../../domain';
 import { useApp } from '../../../viewmodels/AppProvider';
 import { useConsultationViewModel } from '../../../viewmodels/useConsultationViewModel';
 import { FormField } from '../../../views/components/FormField';
 import { PrimaryButton } from '../../../views/components/PrimaryButton';
+import { ResponsiveContainer } from '../../../views/components/ResponsiveContainer';
 import { theme } from '../../../views/theme/tokens';
 
 /** CU-12 + CU-15: Captura de consulta con sugerencia de posición, atípicos y aviso > 1 cm. */
@@ -113,7 +114,7 @@ export default function NuevaConsultaScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ResponsiveContainer variant="form">
       {error ? <Text style={styles.errorBox}>{error}</Text> : null}
 
       <FormField
@@ -163,12 +164,11 @@ export default function NuevaConsultaScreen() {
       </View>
 
       <PrimaryButton title="Calcular y guardar consulta" onPress={manejarEnvio} loading={guardando} />
-    </ScrollView>
+    </ResponsiveContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: theme.spacing.md },
   label: { fontSize: 14, fontWeight: '600', color: theme.colors.text, marginBottom: 6 },
   row: { flexDirection: 'row', gap: 10, marginBottom: theme.spacing.md },
   chip: {

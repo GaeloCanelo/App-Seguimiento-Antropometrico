@@ -11,6 +11,7 @@ export interface PacienteRemotoDoc {
   actualizado_en: string;
   eliminado_en: string | null;
   revision_remota: number;
+  confirmado_servidor_en?: string;
 }
 
 export interface ConsultaRemotaDoc {
@@ -32,6 +33,7 @@ export interface ConsultaRemotaDoc {
   actualizado_en: string;
   eliminado_en: string | null;
   revision_remota: number;
+  confirmado_servidor_en?: string;
   resultados: Record<CodigoIndicador, Omit<ResultadoIndicador, 'id_consulta'>>;
 }
 

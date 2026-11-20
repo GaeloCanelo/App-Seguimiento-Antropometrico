@@ -1,9 +1,10 @@
 import { Link } from 'expo-router';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useApp } from '../../viewmodels/AppProvider';
 import { FormField } from '../../views/components/FormField';
 import { PrimaryButton } from '../../views/components/PrimaryButton';
+import { ResponsiveContainer } from '../../views/components/ResponsiveContainer';
 import { theme } from '../../views/theme/tokens';
 
 /** CU-03: Recuperar contraseña sin revelar si el correo está registrado. */
@@ -32,7 +33,7 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ResponsiveContainer variant="form" centered>
       <Text style={styles.title}>Recuperar contraseña</Text>
       {error ? <Text style={styles.errorBox}>{error}</Text> : null}
       {mensaje ? <Text style={styles.okBox}>{mensaje}</Text> : null}
@@ -52,12 +53,11 @@ export default function ForgotPasswordScreen() {
           Volver a iniciar sesión
         </Link>
       </View>
-    </ScrollView>
+    </ResponsiveContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, justifyContent: 'center', padding: theme.spacing.lg },
   title: { fontSize: 22, fontWeight: '700', color: theme.colors.primary, marginBottom: theme.spacing.lg },
   errorBox: {
     backgroundColor: '#FDECEA',

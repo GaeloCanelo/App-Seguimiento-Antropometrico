@@ -5,6 +5,7 @@ import { formatearEdadMesesYDias } from '../../../domain';
 import { usePatientsViewModel } from '../../../viewmodels/usePatientsViewModel';
 import { useResultsViewModel } from '../../../viewmodels/useResultsViewModel';
 import { PrimaryButton } from '../../../views/components/PrimaryButton';
+import { ResponsiveContainer } from '../../../views/components/ResponsiveContainer';
 import { theme } from '../../../views/theme/tokens';
 
 /** CU-09: Historial del paciente y listado cronológico de consultas. */
@@ -57,7 +58,7 @@ export default function PacienteHistorialScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ResponsiveContainer scrollable={false} contentStyle={styles.flex}>
       <View style={styles.headerCard}>
         <Text style={styles.folio}>{paciente.folio_clinico}</Text>
         <Text style={styles.name}>{paciente.nombre}</Text>
@@ -120,12 +121,11 @@ export default function PacienteHistorialScreen() {
           </Link>
         )}
       />
-    </View>
+    </ResponsiveContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: theme.spacing.md, backgroundColor: theme.colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   headerCard: {
     backgroundColor: theme.colors.surface,

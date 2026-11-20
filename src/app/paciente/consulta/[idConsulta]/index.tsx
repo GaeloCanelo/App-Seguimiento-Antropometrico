@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import {
   CATALOGO_INDICADORES,
   clasificarIndicador,
@@ -10,6 +10,7 @@ import { useConsultationViewModel } from '../../../../viewmodels/useConsultation
 import { useResultsViewModel } from '../../../../viewmodels/useResultsViewModel';
 import { ClinicalDisclaimerBanner } from '../../../../views/components/ClinicalDisclaimerBanner';
 import { PrimaryButton } from '../../../../views/components/PrimaryButton';
+import { ResponsiveContainer } from '../../../../views/components/ResponsiveContainer';
 import { theme } from '../../../../views/theme/tokens';
 
 /** CU-17: Consultar resultados e interpretación referencial de una consulta. */
@@ -44,7 +45,7 @@ export default function ConsultaResultadosScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ResponsiveContainer>
       <ClinicalDisclaimerBanner />
 
       <View style={styles.summaryCard}>
@@ -105,12 +106,11 @@ export default function ConsultaResultadosScreen() {
         />
         <PrimaryButton title="Eliminar consulta" variant="danger" onPress={confirmarBaja} />
       </View>
-    </ScrollView>
+    </ResponsiveContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: theme.spacing.md },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   summaryCard: {
     backgroundColor: theme.colors.surface,

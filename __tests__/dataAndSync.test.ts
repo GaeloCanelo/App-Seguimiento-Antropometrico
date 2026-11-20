@@ -27,30 +27,46 @@ class InMemoryRemoteStore implements RemoteSyncStore {
 
   async subirPaciente(uidMedico: string, doc: PacienteRemotoDoc) {
     if (!this.pacientes.has(uidMedico)) this.pacientes.set(uidMedico, new Map());
-    this.pacientes.get(uidMedico)!.set(doc.id_paciente, doc);
-    return { revisionRemota: doc.revision_remota, confirmadoEn: new Date().toISOString() };
+    const confirmadoEn = new Date().toISOString();
+    this.pacientes.get(uidMedico)!.set(doc.id_paciente, {
+      ...doc,
+      confirmado_servidor_en: confirmadoEn,
+    });
+    return { revisionRemota: doc.revision_remota, confirmadoEn };
   }
 
   async subirConsulta(uidMedico: string, doc: ConsultaRemotaDoc) {
     if (!this.consultas.has(uidMedico)) this.consultas.set(uidMedico, new Map());
-    this.consultas.get(uidMedico)!.set(doc.id_consulta, doc);
-    return { revisionRemota: doc.revision_remota, confirmadoEn: new Date().toISOString() };
+    const confirmadoEn = new Date().toISOString();
+    this.consultas.get(uidMedico)!.set(doc.id_consulta, {
+      ...doc,
+      confirmado_servidor_en: confirmadoEn,
+    });
+    return { revisionRemota: doc.revision_remota, confirmadoEn };
   }
 
   async descargarCambios(
     uidMedico: string,
     cursorRemoto: string | null,
   ): Promise<CambiosRemotosDelta> {
-    const pacs = Array.from(this.pacientes.get(uidMedico)?.values() ?? []).filter(
-      (p) => !cursorRemoto || p.actualizado_en > cursorRemoto,
-    );
-    const cons = Array.from(this.consultas.get(uidMedico)?.values() ?? []).filter(
-      (c) => !cursorRemoto || c.actualizado_en > cursorRemoto,
-    );
+    const pacs = Array.from(this.pacientes.get(uidMedico)?.values() ?? []).filter((p) => {
+      const ts = p.confirmado_servidor_en ?? p.actualizado_en;
+      return !cursorRemoto || ts > cursorRemoto;
+    });
+    const cons = Array.from(this.consultas.get(uidMedico)?.values() ?? []).filter((c) => {
+      const ts = c.confirmado_servidor_en ?? c.actualizado_en;
+      return !cursorRemoto || ts > cursorRemoto;
+    });
 
     let maxTs = cursorRemoto;
-    for (const p of pacs) if (!maxTs || p.actualizado_en > maxTs) maxTs = p.actualizado_en;
-    for (const c of cons) if (!maxTs || c.actualizado_en > maxTs) maxTs = c.actualizado_en;
+    for (const p of pacs) {
+      const ts = p.confirmado_servidor_en ?? p.actualizado_en;
+      if (!maxTs || ts > maxTs) maxTs = ts;
+    }
+    for (const c of cons) {
+      const ts = c.confirmado_servidor_en ?? c.actualizado_en;
+      if (!maxTs || ts > maxTs) maxTs = ts;
+    }
 
     return { pacientes: pacs, consultas: cons, nuevoCursor: maxTs };
   }

@@ -1,9 +1,10 @@
 import { Link, router } from 'expo-router';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import { useApp } from '../../viewmodels/AppProvider';
 import { FormField } from '../../views/components/FormField';
 import { PrimaryButton } from '../../views/components/PrimaryButton';
+import { ResponsiveContainer } from '../../views/components/ResponsiveContainer';
 import { theme } from '../../views/theme/tokens';
 
 /** CU-02: Iniciar sesión con persistencia offline tras el primer acceso. */
@@ -34,7 +35,7 @@ export default function LoginScreen() {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ResponsiveContainer variant="form" centered>
         <Text style={styles.title}>Seguimiento Antropométrico</Text>
         <Text style={styles.subtitle}>Consulta pediátrica 0–5 años (OMS 2006)</Text>
 
@@ -67,14 +68,13 @@ export default function LoginScreen() {
             Crear cuenta nueva
           </Link>
         </View>
-      </ScrollView>
+      </ResponsiveContainer>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: theme.colors.background },
-  container: { flexGrow: 1, justifyContent: 'center', padding: theme.spacing.lg },
   title: { fontSize: 24, fontWeight: '700', color: theme.colors.primary, marginBottom: 4 },
   subtitle: { fontSize: 14, color: theme.colors.textMuted, marginBottom: theme.spacing.lg },
   errorBox: {

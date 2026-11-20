@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   CATALOGO_INDICADORES,
   CodigoIndicador,
@@ -16,6 +16,7 @@ import { useResultsViewModel } from '../../../../viewmodels/useResultsViewModel'
 import { ClinicalDisclaimerBanner } from '../../../../views/components/ClinicalDisclaimerBanner';
 import { GrowthCurveSvg } from '../../../../views/components/GrowthCurveSvg';
 import { PrimaryButton } from '../../../../views/components/PrimaryButton';
+import { ResponsiveContainer } from '../../../../views/components/ResponsiveContainer';
 import { theme } from '../../../../views/theme/tokens';
 
 /** CU-19: Vista previa completa y exportación de reporte PDF anonimizado ([Folio]_[Fecha].pdf). */
@@ -68,7 +69,7 @@ export default function ReportePdfScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ResponsiveContainer>
       <ClinicalDisclaimerBanner />
 
       <View style={styles.previewCard}>
@@ -150,12 +151,11 @@ export default function ReportePdfScreen() {
       </View>
 
       <PrimaryButton title="Exportar PDF" onPress={exportar} loading={exportando} />
-    </ScrollView>
+    </ResponsiveContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: theme.spacing.md, paddingBottom: theme.spacing.xl },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   previewCard: {
     backgroundColor: theme.colors.surface,

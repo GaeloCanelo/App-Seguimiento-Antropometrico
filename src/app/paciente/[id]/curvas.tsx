@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CATALOGO_INDICADORES, CodigoIndicador } from '../../../domain';
 import {
   PuntoPacienteSvg,
@@ -11,6 +11,7 @@ import {
 import { useResultsViewModel } from '../../../viewmodels/useResultsViewModel';
 import { ClinicalDisclaimerBanner } from '../../../views/components/ClinicalDisclaimerBanner';
 import { GrowthCurveSvg } from '../../../views/components/GrowthCurveSvg';
+import { ResponsiveContainer } from '../../../views/components/ResponsiveContainer';
 import { theme } from '../../../views/theme/tokens';
 
 /**
@@ -66,7 +67,7 @@ export default function CurvasCrecimientoScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ResponsiveContainer>
       <ClinicalDisclaimerBanner />
 
       <Text style={styles.patientHeader}>
@@ -161,12 +162,11 @@ export default function CurvasCrecimientoScreen() {
           ))}
         </View>
       ) : null}
-    </ScrollView>
+    </ResponsiveContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: theme.spacing.md, paddingBottom: theme.spacing.xl },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   patientHeader: {
     fontSize: 14,
