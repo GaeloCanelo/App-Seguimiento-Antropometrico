@@ -8,14 +8,14 @@ import { FormField } from '../../../views/components/FormField';
 import { PrimaryButton } from '../../../views/components/PrimaryButton';
 import { theme } from '../../../views/theme/tokens';
 
-/** CU-12 + CU-15: Captura de consulta con sugerencia de posición y confirmación de atípicos. */
+/** CU-12 + CU-15: Captura de consulta con sugerencia de posición, atípicos y aviso > 1 cm. */
 export default function NuevaConsultaScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { pacienteRepo } = useApp();
   const {
     guardando,
     sugerirPosicionPorFecha,
-    previsualizarAtipicos,
+    previsualizarAdvertencias,
     verificarDuplicadoMismaFecha,
     guardarConsulta,
   } = useConsultationViewModel();
@@ -55,26 +55,37 @@ export default function NuevaConsultaScreen() {
     if (!id || !fechaNacimiento) return;
     setError(null);
     try {
-      const payload = {
+      const advertencias = await previsualizarAdvertencias({
         id_paciente: id,
         fecha_consulta: fechaConsulta,
         peso_kg: Number(peso),
         longitud_talla_cm: Number(talla),
         perimetro_cefalico_cm: Number(pc),
         posicion_medicion: posicion,
-      };
-      const evalPrevia = await previsualizarAtipicos(payload);
+      });
 
       const continuarDespuesDeDuplicado = async () => {
-        if (evalPrevia.hay_atipicos) {
+        const mensajes: string[] = [];
+        if (advertencias.hayAtipicos) {
+          mensajes.push(
+            'Uno o más indicadores superan los límites de plausibilidad biológica de la OMS.',
+          );
+        }
+        if (advertencias.avisosDecremento.length > 0) {
+          mensajes.push(...advertencias.avisosDecremento);
+        }
+
+        if (mensajes.length > 0) {
           Alert.alert(
-            'Valor biológicamente improbable',
-            'Uno o más indicadores superan los límites de plausibilidad de la OMS. ¿Deseas corregir o confirmar el valor?',
+            advertencias.hayAtipicos
+              ? 'Valor biológicamente improbable'
+              : 'Aviso de medición longitudinal',
+            `${mensajes.join('\n\n')}\n\n¿Deseas corregir o confirmar el valor?`,
             [
               { text: 'Corregir', style: 'cancel' },
               {
                 text: 'Confirmar valor',
-                onPress: () => void confirmarYGuardar(true),
+                onPress: () => void confirmarYGuardar(advertencias.hayAtipicos),
               },
             ],
           );
