@@ -2,6 +2,7 @@
   "expo": {
     "name": "Seguimiento Antropométrico",
     "slug": "seguimiento-antropometrico",
+    "scheme": "antropometria",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -24,7 +25,9 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-router",
+      "expo-sharing"
     ]
   }
 }
