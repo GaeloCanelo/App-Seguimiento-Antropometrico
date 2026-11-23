@@ -2,10 +2,16 @@ import { useCallback, useState } from 'react';
 import {
   PosicionMedicion,
   calcularEdadEnDias,
+  detectarDecrementoMedida,
   evaluarConsultaAntropometrica,
   sugerirPosicionMedicion,
 } from '../domain';
 import { useApp } from './AppProvider';
+
+export interface ResultadoPrevisualizacion {
+  hayAtipicos: boolean;
+  avisosDecremento: string[];
+}
 
 export function useConsultationViewModel() {
   const { consultaRepo, pacienteRepo, refrescarPendientes, sincronizarAhora, hayConexion } = useApp();
@@ -23,20 +29,27 @@ export function useConsultationViewModel() {
     [],
   );
 
-  const previsualizarAtipicos = useCallback(
+  /**
+   * Valida la captura y detecta tanto valores atípicos OMS (HU-13)
+   * como decrementos > 1 cm respecto a la consulta previa (CU-15 4b).
+   */
+  const previsualizarAdvertencias = useCallback(
     async (params: {
       id_paciente: string;
+      excluir_id_consulta?: string;
       fecha_consulta: string;
       peso_kg: number;
       longitud_talla_cm: number;
       perimetro_cefalico_cm: number;
       posicion_medicion: PosicionMedicion;
-    }) => {
-      if (!pacienteRepo) throw new Error('Base de datos no disponible.');
+    }): Promise<ResultadoPrevisualizacion> => {
+      if (!pacienteRepo || !consultaRepo) {
+        throw new Error('Base de datos no disponible.');
+      }
       const paciente = await pacienteRepo.obtenerPorId(params.id_paciente);
       if (!paciente) throw new Error('Paciente no encontrado.');
 
-      return evaluarConsultaAntropometrica({
+      const evalSalida = evaluarConsultaAntropometrica({
         sexo: paciente.sexo,
         fecha_nacimiento: paciente.fecha_nacimiento,
         fecha_consulta: params.fecha_consulta,
@@ -45,8 +58,33 @@ export function useConsultationViewModel() {
         perimetro_cefalico_cm: params.perimetro_cefalico_cm,
         posicion_medicion: params.posicion_medicion,
       });
+
+      const historial = await consultaRepo.listarPorPaciente(params.id_paciente);
+      const previa = historial.find(
+        (c) =>
+          c.id_consulta !== params.excluir_id_consulta &&
+          c.fecha_consulta < params.fecha_consulta,
+      );
+
+      const avisosDecremento = previa
+        ? detectarDecrementoMedida(
+            {
+              longitud_talla_cm: previa.longitud_talla_cm,
+              perimetro_cefalico_cm: previa.perimetro_cefalico_cm,
+            },
+            {
+              longitud_talla_cm: params.longitud_talla_cm,
+              perimetro_cefalico_cm: params.perimetro_cefalico_cm,
+            },
+          )
+        : [];
+
+      return {
+        hayAtipicos: evalSalida.hay_atipicos,
+        avisosDecremento,
+      };
     },
-    [pacienteRepo],
+    [consultaRepo, pacienteRepo],
   );
 
   const verificarDuplicadoMismaFecha = useCallback(
@@ -118,7 +156,7 @@ export function useConsultationViewModel() {
   return {
     guardando,
     sugerirPosicionPorFecha,
-    previsualizarAtipicos,
+    previsualizarAdvertencias,
     verificarDuplicadoMismaFecha,
     guardarConsulta,
     corregirConsulta,

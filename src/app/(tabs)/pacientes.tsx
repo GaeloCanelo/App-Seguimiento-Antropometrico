@@ -3,14 +3,17 @@ import React, { useCallback } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useApp } from '../../viewmodels/AppProvider';
 import { usePatientsViewModel } from '../../viewmodels/usePatientsViewModel';
+import { ResponsiveContainer } from '../../views/components/ResponsiveContainer';
 import { SyncStatusBadge } from '../../views/components/SyncStatusBadge';
+import { useResponsiveLayout } from '../../views/hooks/useResponsiveLayout';
 import { theme } from '../../views/theme/tokens';
 
-/** CU-08: Lista y búsqueda de pacientes por folio o nombre. */
+/** CU-08: Lista y búsqueda de pacientes por folio o nombre (adaptable a teléfono y tableta). */
 export default function PacientesScreen() {
   const { hayConexion, sincronizando, pendientesSync, ultimoErrorSync, sincronizarAhora } =
     useApp();
   const { pacientes, busqueda, setBusqueda, cargarPacientes } = usePatientsViewModel();
+  const { esTableta } = useResponsiveLayout();
 
   useFocusEffect(
     useCallback(() => {
@@ -19,7 +22,7 @@ export default function PacientesScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <ResponsiveContainer scrollable={false} contentStyle={styles.flex}>
       <View style={styles.topBar}>
         <SyncStatusBadge
           hayConexion={hayConexion}
@@ -39,6 +42,9 @@ export default function PacientesScreen() {
       />
 
       <FlatList
+        key={esTableta ? 'grid-2' : 'list-1'}
+        numColumns={esTableta ? 2 : 1}
+        columnWrapperStyle={esTableta ? styles.columnGap : undefined}
         data={pacientes}
         keyExtractor={(item) => item.id_paciente}
         ListEmptyComponent={
@@ -55,7 +61,7 @@ export default function PacientesScreen() {
         }
         renderItem={({ item }) => (
           <Link href={`/paciente/${item.id_paciente}`} asChild>
-            <Pressable style={styles.card}>
+            <Pressable style={[styles.card, esTableta && styles.cardTablet]}>
               <View style={styles.cardHeader}>
                 <Text style={styles.folio}>{item.folio_clinico}</Text>
                 <Text style={styles.sexo}>{item.sexo === 'M' ? 'Niño' : 'Niña'}</Text>
@@ -66,12 +72,12 @@ export default function PacientesScreen() {
           </Link>
         )}
       />
-    </View>
+    </ResponsiveContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: theme.spacing.md, backgroundColor: theme.colors.background },
+  flex: { flex: 1 },
   topBar: { marginBottom: theme.spacing.sm },
   searchInput: {
     backgroundColor: theme.colors.surface,
@@ -84,6 +90,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     color: theme.colors.text,
   },
+  columnGap: { gap: theme.spacing.sm },
   card: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.md,
@@ -92,6 +99,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
+  cardTablet: { flex: 1 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   folio: { fontSize: 13, fontWeight: '700', color: theme.colors.primary },
   sexo: { fontSize: 12, color: theme.colors.textMuted },

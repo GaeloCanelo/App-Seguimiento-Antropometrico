@@ -1,18 +1,19 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { PosicionMedicion } from '../../../../domain';
 import { useApp } from '../../../../viewmodels/AppProvider';
 import { useConsultationViewModel } from '../../../../viewmodels/useConsultationViewModel';
 import { FormField } from '../../../../views/components/FormField';
 import { PrimaryButton } from '../../../../views/components/PrimaryButton';
+import { ResponsiveContainer } from '../../../../views/components/ResponsiveContainer';
 import { theme } from '../../../../views/theme/tokens';
 
 /** CU-13: Corregir mediciones de una consulta ya registrada. */
 export default function EditarConsultaScreen() {
   const { idConsulta } = useLocalSearchParams<{ idConsulta: string }>();
   const { consultaRepo } = useApp();
-  const { guardando, previsualizarAtipicos, corregirConsulta } = useConsultationViewModel();
+  const { guardando, previsualizarAdvertencias, corregirConsulta } = useConsultationViewModel();
 
   const [idPaciente, setIdPaciente] = useState<string | null>(null);
   const [fechaConsulta, setFechaConsulta] = useState('');
@@ -50,11 +51,12 @@ export default function EditarConsultaScreen() {
   };
 
   const manejarGuardar = async () => {
-    if (!idPaciente) return;
+    if (!idPaciente || !idConsulta) return;
     setError(null);
     try {
-      const prev = await previsualizarAtipicos({
+      const adv = await previsualizarAdvertencias({
         id_paciente: idPaciente,
+        excluir_id_consulta: idConsulta,
         fecha_consulta: fechaConsulta,
         peso_kg: Number(peso),
         longitud_talla_cm: Number(talla),
@@ -62,13 +64,21 @@ export default function EditarConsultaScreen() {
         posicion_medicion: posicion,
       });
 
-      if (prev.hay_atipicos) {
+      const mensajes: string[] = [];
+      if (adv.hayAtipicos) {
+        mensajes.push('Uno o más indicadores superan los límites de plausibilidad de la OMS.');
+      }
+      if (adv.avisosDecremento.length > 0) {
+        mensajes.push(...adv.avisosDecremento);
+      }
+
+      if (mensajes.length > 0) {
         Alert.alert(
-          'Valor biológicamente improbable',
-          'Uno o más indicadores superan los límites de plausibilidad. ¿Deseas corregir o confirmar?',
+          adv.hayAtipicos ? 'Valor biológicamente improbable' : 'Aviso de medición longitudinal',
+          `${mensajes.join('\n\n')}\n\n¿Deseas corregir o confirmar?`,
           [
             { text: 'Corregir', style: 'cancel' },
-            { text: 'Confirmar valor', onPress: () => void guardar(true) },
+            { text: 'Confirmar valor', onPress: () => void guardar(adv.hayAtipicos) },
           ],
         );
       } else {
@@ -80,7 +90,7 @@ export default function EditarConsultaScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ResponsiveContainer variant="form">
       {error ? <Text style={styles.errorBox}>{error}</Text> : null}
       <FormField label="Fecha de consulta" value={fechaConsulta} onChangeText={setFechaConsulta} />
       <FormField label="Peso (kg)" value={peso} onChangeText={setPeso} keyboardType="decimal-pad" />
@@ -113,12 +123,11 @@ export default function EditarConsultaScreen() {
       </View>
 
       <PrimaryButton title="Guardar corrección" onPress={manejarGuardar} loading={guardando} />
-    </ScrollView>
+    </ResponsiveContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: theme.spacing.md },
   label: { fontSize: 14, fontWeight: '600', color: theme.colors.text, marginBottom: 6 },
   row: { flexDirection: 'row', gap: 10, marginBottom: theme.spacing.md },
   chip: {

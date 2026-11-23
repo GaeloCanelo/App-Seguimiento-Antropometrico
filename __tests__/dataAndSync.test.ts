@@ -27,30 +27,46 @@ class InMemoryRemoteStore implements RemoteSyncStore {
 
   async subirPaciente(uidMedico: string, doc: PacienteRemotoDoc) {
     if (!this.pacientes.has(uidMedico)) this.pacientes.set(uidMedico, new Map());
-    this.pacientes.get(uidMedico)!.set(doc.id_paciente, doc);
-    return { revisionRemota: doc.revision_remota, confirmadoEn: new Date().toISOString() };
+    const confirmadoEn = new Date().toISOString();
+    this.pacientes.get(uidMedico)!.set(doc.id_paciente, {
+      ...doc,
+      confirmado_servidor_en: confirmadoEn,
+    });
+    return { revisionRemota: doc.revision_remota, confirmadoEn };
   }
 
   async subirConsulta(uidMedico: string, doc: ConsultaRemotaDoc) {
     if (!this.consultas.has(uidMedico)) this.consultas.set(uidMedico, new Map());
-    this.consultas.get(uidMedico)!.set(doc.id_consulta, doc);
-    return { revisionRemota: doc.revision_remota, confirmadoEn: new Date().toISOString() };
+    const confirmadoEn = new Date().toISOString();
+    this.consultas.get(uidMedico)!.set(doc.id_consulta, {
+      ...doc,
+      confirmado_servidor_en: confirmadoEn,
+    });
+    return { revisionRemota: doc.revision_remota, confirmadoEn };
   }
 
   async descargarCambios(
     uidMedico: string,
     cursorRemoto: string | null,
   ): Promise<CambiosRemotosDelta> {
-    const pacs = Array.from(this.pacientes.get(uidMedico)?.values() ?? []).filter(
-      (p) => !cursorRemoto || p.actualizado_en > cursorRemoto,
-    );
-    const cons = Array.from(this.consultas.get(uidMedico)?.values() ?? []).filter(
-      (c) => !cursorRemoto || c.actualizado_en > cursorRemoto,
-    );
+    const pacs = Array.from(this.pacientes.get(uidMedico)?.values() ?? []).filter((p) => {
+      const ts = p.confirmado_servidor_en ?? p.actualizado_en;
+      return !cursorRemoto || ts > cursorRemoto;
+    });
+    const cons = Array.from(this.consultas.get(uidMedico)?.values() ?? []).filter((c) => {
+      const ts = c.confirmado_servidor_en ?? c.actualizado_en;
+      return !cursorRemoto || ts > cursorRemoto;
+    });
 
     let maxTs = cursorRemoto;
-    for (const p of pacs) if (!maxTs || p.actualizado_en > maxTs) maxTs = p.actualizado_en;
-    for (const c of cons) if (!maxTs || c.actualizado_en > maxTs) maxTs = c.actualizado_en;
+    for (const p of pacs) {
+      const ts = p.confirmado_servidor_en ?? p.actualizado_en;
+      if (!maxTs || ts > maxTs) maxTs = ts;
+    }
+    for (const c of cons) {
+      const ts = c.confirmado_servidor_en ?? c.actualizado_en;
+      if (!maxTs || ts > maxTs) maxTs = ts;
+    }
 
     return { pacientes: pacs, consultas: cons, nuevoCursor: maxTs };
   }
@@ -247,5 +263,64 @@ describe('Capa de datos SQLite + Repositorios + SyncService (CU-07 a CU-14, CU-2
     await medicoA.limpiarDatosLocales();
     await medicoA.guardarPerfil({ uid_medico: 'doc-2', correo: 'doc2@ipn.mx' });
     expect(await pacA.buscar('doc-2')).toHaveLength(0);
+  });
+
+  it('CU-10 (5a), CU-13 y CU-14: revierte edición si consulta sale de 0-60m, corrige y elimina consultas', async () => {
+    const medicoRepo = new MedicoRepository(dbA);
+    const pacRepo = new PacienteRepository(dbA);
+    const conRepo = new ConsultaRepository(dbA);
+
+    await medicoRepo.guardarPerfil({ uid_medico: 'doc-1', correo: 'doc1@ipn.mx' });
+    const pac = await pacRepo.registrar({
+      uid_medico: 'doc-1',
+      folio_clinico: 'CU10-01',
+      nombre: 'Valeria Cruz',
+      sexo: 'F',
+      fecha_nacimiento: '2022-06-01',
+      fecha_hoy: '2026-11-17',
+    });
+
+    const detalle = await conRepo.registrar({
+      id_paciente: pac.id_paciente,
+      fecha_consulta: '2026-11-17',
+      fecha_hoy: '2026-11-17',
+      peso_kg: 16.5,
+      longitud_talla_cm: 102.0,
+      perimetro_cefalico_cm: 49.5,
+      posicion_medicion: 'DE_PIE',
+    });
+
+    // CU-10 (5a): Si cambiamos nacimiento a 2021-11-01 (> 1826 días a la consulta), la transacción debe fallar y revertir
+    await expect(
+      pacRepo.actualizar({
+        id_paciente: pac.id_paciente,
+        folio_clinico: 'CU10-01',
+        nombre: 'Valeria Cruz',
+        sexo: 'F',
+        fecha_nacimiento: '2021-11-01',
+        fecha_hoy: '2026-11-17',
+      }),
+    ).rejects.toThrow(/60 meses/);
+
+    const pacSinCambios = await pacRepo.obtenerPorId(pac.id_paciente);
+    expect(pacSinCambios?.fecha_nacimiento).toBe('2022-06-01');
+
+    // CU-13: Corregir consulta recalcula indicadores e incrementa revision_local
+    const corregida = await conRepo.corregir({
+      id_consulta: detalle.consulta.id_consulta,
+      fecha_consulta: '2026-11-17',
+      fecha_hoy: '2026-11-17',
+      peso_kg: 17.5,
+      longitud_talla_cm: 103.0,
+      perimetro_cefalico_cm: 49.5,
+      posicion_medicion: 'DE_PIE',
+    });
+    expect(corregida.consulta.revision_local).toBe(2);
+    expect(corregida.consulta.peso_kg).toBe(17.5);
+
+    // CU-14: Eliminar consulta la oculta de listados pero mantiene marca pendiente
+    await conRepo.eliminarLogico(detalle.consulta.id_consulta);
+    expect(await conRepo.listarPorPaciente(pac.id_paciente)).toHaveLength(0);
+    expect(await medicoRepo.contarCambiosPendientes('doc-1')).toBeGreaterThan(0);
   });
 });

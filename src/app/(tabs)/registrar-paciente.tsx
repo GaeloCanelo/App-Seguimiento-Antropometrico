@@ -1,10 +1,11 @@
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Sexo } from '../../domain';
 import { usePatientsViewModel } from '../../viewmodels/usePatientsViewModel';
 import { FormField } from '../../views/components/FormField';
 import { PrimaryButton } from '../../views/components/PrimaryButton';
+import { ResponsiveContainer } from '../../views/components/ResponsiveContainer';
 import { theme } from '../../views/theme/tokens';
 
 /** CU-07: Registrar nuevo paciente (0 a 60 meses). */
@@ -39,7 +40,7 @@ export default function RegistrarPacienteScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ResponsiveContainer variant="form">
       {error ? <Text style={styles.errorBox}>{error}</Text> : null}
 
       <FormField
@@ -79,12 +80,11 @@ export default function RegistrarPacienteScreen() {
       />
 
       <PrimaryButton title="Guardar paciente" onPress={guardar} loading={guardando} />
-    </ScrollView>
+    </ResponsiveContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: theme.spacing.md },
   label: { fontSize: 14, fontWeight: '600', color: theme.colors.text, marginBottom: 6 },
   row: { flexDirection: 'row', gap: 10, marginBottom: theme.spacing.md },
   chip: {

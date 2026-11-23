@@ -201,7 +201,11 @@ export class AuthManager {
     }
 
     const cred = EmailAuthProvider.credential(user.email, params.contrasenaActual);
-    await reauthenticateWithCredential(user, cred);
+    try {
+      await reauthenticateWithCredential(user, cred);
+    } catch {
+      throw new Error('La contraseña actual es incorrecta.');
+    }
     await updatePassword(user, params.nuevaContrasena);
   }
 
@@ -236,7 +240,11 @@ export class AuthManager {
     }
 
     const cred = EmailAuthProvider.credential(user.email, params.contrasena);
-    await reauthenticateWithCredential(user, cred);
+    try {
+      await reauthenticateWithCredential(user, cred);
+    } catch {
+      throw new Error('La contraseña ingresada es incorrecta.');
+    }
 
     await this.remoteSync.eliminarTodoDeMedico(params.uid_medico);
     await deleteUser(user);

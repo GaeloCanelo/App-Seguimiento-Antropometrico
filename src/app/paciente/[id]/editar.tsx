@@ -1,11 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Sexo } from '../../../domain';
 import { useApp } from '../../../viewmodels/AppProvider';
 import { usePatientsViewModel } from '../../../viewmodels/usePatientsViewModel';
 import { FormField } from '../../../views/components/FormField';
 import { PrimaryButton } from '../../../views/components/PrimaryButton';
+import { ResponsiveContainer } from '../../../views/components/ResponsiveContainer';
 import { theme } from '../../../views/theme/tokens';
 
 /** CU-10: Actualizar datos de identificación del paciente (recalcula consultas). */
@@ -53,7 +54,7 @@ export default function EditarPacienteScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ResponsiveContainer variant="form">
       {error ? <Text style={styles.errorBox}>{error}</Text> : null}
       <FormField label="Folio clínico" value={folio} onChangeText={setFolio} />
       <FormField label="Nombre completo" value={nombre} onChangeText={setNombre} />
@@ -81,12 +82,11 @@ export default function EditarPacienteScreen() {
       />
 
       <PrimaryButton title="Guardar cambios" onPress={guardar} loading={guardando} />
-    </ScrollView>
+    </ResponsiveContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: theme.spacing.md },
   label: { fontSize: 14, fontWeight: '600', color: theme.colors.text, marginBottom: 6 },
   row: { flexDirection: 'row', gap: 10, marginBottom: theme.spacing.md },
   chip: {

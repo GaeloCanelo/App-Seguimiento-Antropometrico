@@ -1,9 +1,10 @@
 import { Link, router } from 'expo-router';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useApp } from '../../viewmodels/AppProvider';
 import { FormField } from '../../views/components/FormField';
 import { PrimaryButton } from '../../views/components/PrimaryButton';
+import { ResponsiveContainer } from '../../views/components/ResponsiveContainer';
 import { theme } from '../../views/theme/tokens';
 
 /** CU-01: Crear cuenta con correo y contraseña (>= 8 caracteres). */
@@ -36,7 +37,7 @@ export default function RegisterScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ResponsiveContainer variant="form" centered>
       <Text style={styles.title}>Crear cuenta médica</Text>
       <Text style={styles.subtitle}>Requiere conexión a internet para el registro inicial.</Text>
 
@@ -70,12 +71,11 @@ export default function RegisterScreen() {
           Ya tengo cuenta · Iniciar sesión
         </Link>
       </View>
-    </ScrollView>
+    </ResponsiveContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, justifyContent: 'center', padding: theme.spacing.lg },
   title: { fontSize: 22, fontWeight: '700', color: theme.colors.primary, marginBottom: 4 },
   subtitle: { fontSize: 14, color: theme.colors.textMuted, marginBottom: theme.spacing.lg },
   errorBox: {
