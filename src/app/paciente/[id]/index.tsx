@@ -1,166 +1,199 @@
-import { Link, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import React, { useCallback } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { folioVisible } from '../../../views/utils/patientDisplay';
+import { Link, router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { formatearEdadMesesYDias } from '../../../domain';
 import { usePatientsViewModel } from '../../../viewmodels/usePatientsViewModel';
 import { useResultsViewModel } from '../../../viewmodels/useResultsViewModel';
+import { ClinicalScreen } from '../../../views/components/ClinicalScreen';
+import { DesignSvg } from '../../../views/components/DesignSvg';
+import { KidoLogCard } from '../../../views/components/KidoLogCard';
+import {
+  GradientCard,
+  IconAction,
+  Notice,
+  ScreenFeedback,
+  useUI,
+} from '../../../views/components/KidoLogUI';
 import { PrimaryButton } from '../../../views/components/PrimaryButton';
-import { theme } from '../../../views/theme/tokens';
+import { useThemedStyles } from '../../../views/theme/ThemeProvider';
+import type { KidoLogTheme } from '../../../views/theme/tokens';
+import { displayDate } from '../../../views/utils/clinicalDisplay';
 
-/** CU-09: Historial del paciente y listado cronológico de consultas. */
+import { useDialog } from '../../../views/components/DialogProvider';
+
 export default function PacienteHistorialScreen() {
+  const dialog = useDialog();
+  const styles = useThemedStyles(createStyles);
+  const ui = useUI();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { paciente, historialConsultas, cargando, recargar } = useResultsViewModel(undefined, id);
+  const { paciente, historialConsultas, cargando, error } = useResultsViewModel(undefined, id);
   const { eliminarPaciente } = usePatientsViewModel();
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      void recargar();
-    }, [recargar]),
-  );
-
-  if (cargando && !paciente) {
+  if (!paciente)
     return (
-      <View style={styles.center}>
-        <Text style={styles.muted}>Cargando historial...</Text>
-      </View>
+      <ClinicalScreen title="Expediente">
+        <ScreenFeedback loading={cargando} error={error} empty="Paciente no encontrado." />
+      </ClinicalScreen>
     );
-  }
 
-  if (!paciente) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.muted}>Paciente no encontrado.</Text>
-      </View>
-    );
-  }
-
-  const hoyIso = new Date().toISOString().slice(0, 10);
-  const edadActual = formatearEdadMesesYDias(paciente.fecha_nacimiento, hoyIso).texto;
-
-  const confirmarEliminacion = () => {
-    Alert.alert(
-      'Eliminar paciente',
-      'Se eliminará este paciente junto con todas sus consultas asociadas.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            await eliminarPaciente(paciente.id_paciente);
-            router.replace('/(tabs)/pacientes');
-          },
+  const age = formatearEdadMesesYDias(
+    paciente.fecha_nacimiento,
+    new Date().toISOString().slice(0, 10),
+  ).texto;
+  const patientRoute = `/paciente/${paciente.id_paciente}` as const;
+  const eliminar = () => {
+    dialog('Eliminar paciente', 'Se eliminará el paciente junto con sus consultas.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: () => {
+          void eliminarPaciente(paciente.id_paciente).then(
+            () => router.dismissTo('/(tabs)/pacientes'),
+            (reason: unknown) =>
+              setDeleteError(
+                reason instanceof Error ? reason.message : 'No fue posible eliminar el paciente.',
+              ),
+          );
         },
-      ],
-    );
+      },
+    ]);
   };
+  const opciones = () =>
+    dialog('Opciones del paciente', undefined, [
+      { text: 'Editar paciente', onPress: () => router.push(`${patientRoute}/editar`) },
+      { text: 'Eliminar paciente', style: 'destructive' as const, onPress: eliminar },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  const count = historialConsultas.length;
+  const lastVisit = historialConsultas[0]?.consulta.fecha_consulta;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerCard}>
-        <Text style={styles.folio}>{paciente.folio_clinico}</Text>
-        <Text style={styles.name}>{paciente.nombre}</Text>
-        <Text style={styles.meta}>
-          {paciente.sexo === 'M' ? 'Masculino' : 'Femenino'} · Nac.: {paciente.fecha_nacimiento} ·
-          Edad actual: {edadActual}
-        </Text>
-
-        <View style={styles.actionsRow}>
-          <Link href={`/paciente/${paciente.id_paciente}/editar`} style={styles.actionLink}>
-            Editar paciente
-          </Link>
-          <Pressable onPress={confirmarEliminacion}>
-            <Text style={[styles.actionLink, { color: theme.colors.danger }]}>Eliminar</Text>
-          </Pressable>
+    <ClinicalScreen
+      title="Expediente"
+      action={<IconAction icon="dots" label="Opciones del paciente" onPress={opciones} onHero />}
+    >
+      <GradientCard style={styles.profile}>
+        <View style={ui.row}>
+          <View style={styles.avatar}>
+            <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+              <DesignSvg name="record-avatar" />
+            </View>
+            <Text style={styles.initial}>
+              {Array.from(paciente.nombre.trim())[0]?.toLocaleUpperCase('es-MX')}
+            </Text>
+          </View>
+          <View style={ui.grow}>
+            <Text style={ui.section}>{paciente.nombre}</Text>
+            <Text style={ui.muted}>
+              {folioVisible(paciente.folio_clinico)} ·{' '}
+              {paciente.sexo === 'M' ? 'Masculino' : 'Femenino'}
+            </Text>
+          </View>
         </View>
-      </View>
-
-      <View style={styles.ctaRow}>
-        <View style={styles.flex}>
+        <View style={styles.metadata}>
+          <Text style={styles.pill}>{age}</Text>
+          <Text style={styles.pill}>Nacimiento · {displayDate(paciente.fecha_nacimiento)}</Text>
+          {lastVisit ? (
+            <Text style={styles.pill}>Última consulta · {displayDate(lastVisit)}</Text>
+          ) : null}
+        </View>
+      </GradientCard>
+      <View style={styles.actions}>
+        <View style={styles.action}>
           <PrimaryButton
-            title="+ Nueva consulta"
-            onPress={() => router.push(`/paciente/${paciente.id_paciente}/nueva-consulta`)}
+            title="Nueva consulta"
+            variant="accent"
+            onPress={() => router.push(`${patientRoute}/nueva-consulta`)}
           />
         </View>
-        {historialConsultas.length > 0 ? (
-          <View style={styles.flex}>
+        {count ? (
+          <View style={styles.action}>
             <PrimaryButton
-              title="Ver curvas"
+              title="Ver curvas OMS"
               variant="secondary"
-              onPress={() => router.push(`/paciente/${paciente.id_paciente}/curvas`)}
+              onPress={() => router.push(`${patientRoute}/curvas`)}
             />
           </View>
         ) : null}
       </View>
-
-      <Text style={styles.sectionTitle}>Consultas registradas</Text>
-
-      <FlatList
-        data={historialConsultas}
-        keyExtractor={(item) => item.consulta.id_consulta}
-        ListEmptyComponent={
-          <Text style={styles.muted}>Aún no hay consultas registradas para este paciente.</Text>
-        }
-        renderItem={({ item }) => (
-          <Link href={`/paciente/consulta/${item.consulta.id_consulta}`} asChild>
-            <Pressable style={styles.consultaCard}>
-              <View style={styles.cardTop}>
-                <Text style={styles.fecha}>{item.consulta.fecha_consulta}</Text>
-                {item.consulta.atipico_confirmado ? (
-                  <Text style={styles.atipicoBadge}>Atípico confirmado</Text>
+      {deleteError ? <Notice tone="error">{deleteError}</Notice> : null}
+      <View style={ui.between}>
+        <Text accessibilityRole="header" style={[ui.section, ui.grow]}>
+          Historial de consultas
+        </Text>
+        <Text style={ui.muted}>
+          {count} {count === 1 ? 'consulta' : 'consultas'}
+        </Text>
+      </View>
+      {error || !count ? (
+        <ScreenFeedback
+          loading={cargando}
+          error={error}
+          empty="Aún no hay consultas registradas."
+        />
+      ) : null}
+      {historialConsultas.map(({ consulta }) => (
+        <Link
+          key={consulta.id_consulta}
+          href={`/paciente/consulta/${consulta.id_consulta}`}
+          asChild
+        >
+          <Pressable
+            accessibilityRole="link"
+            style={({ pressed }) => pressed && styles.visitPressed}
+          >
+            <KidoLogCard style={[ui.row, styles.visit]}>
+              <View style={styles.dateTile}>
+                <DesignSvg name="record-calendar" size={20} />
+              </View>
+              <View style={ui.grow}>
+                <Text style={ui.title}>{displayDate(consulta.fecha_consulta)}</Text>
+                <Text style={ui.muted}>
+                  {consulta.peso_kg.toFixed(2)} kg · {consulta.longitud_talla_cm.toFixed(1)} cm · PC{' '}
+                  {consulta.perimetro_cefalico_cm.toFixed(1)} cm
+                </Text>
+                {consulta.atipico_confirmado ? (
+                  <Text style={styles.atypical}>Atípico confirmado</Text>
                 ) : null}
               </View>
-              <Text style={styles.meta}>
-                Peso: {item.consulta.peso_kg.toFixed(2)} kg · Talla:{' '}
-                {item.consulta.longitud_talla_cm.toFixed(1)} cm · PC:{' '}
-                {item.consulta.perimetro_cefalico_cm.toFixed(1)} cm
-              </Text>
-            </Pressable>
-          </Link>
-        )}
-      />
-    </View>
+              <DesignSvg name="record-chevron" />
+            </KidoLogCard>
+          </Pressable>
+        </Link>
+      ))}
+    </ClinicalScreen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: theme.spacing.md, backgroundColor: theme.colors.background },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  headerCard: {
-    backgroundColor: theme.colors.surface,
-    padding: theme.spacing.md,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginBottom: theme.spacing.md,
-  },
-  folio: { color: theme.colors.primary, fontWeight: '700', fontSize: 13 },
-  name: { fontSize: 18, fontWeight: '700', color: theme.colors.text, marginTop: 2 },
-  meta: { fontSize: 13, color: theme.colors.textMuted, marginTop: 4 },
-  actionsRow: { flexDirection: 'row', gap: 16, marginTop: 10 },
-  actionLink: { color: theme.colors.primary, fontWeight: '600', fontSize: 13 },
-  ctaRow: { flexDirection: 'row', gap: 10, marginBottom: theme.spacing.md },
-  flex: { flex: 1 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: theme.colors.text, marginBottom: 8 },
-  consultaCard: {
-    backgroundColor: theme.colors.surface,
-    padding: theme.spacing.md,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginBottom: theme.spacing.sm,
-  },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  fecha: { fontWeight: '700', color: theme.colors.text, fontSize: 15 },
-  atipicoBadge: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: theme.colors.warning,
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  muted: { color: theme.colors.textMuted, fontSize: 14 },
-});
+const createStyles = (theme: KidoLogTheme) =>
+  StyleSheet.create({
+    profile: { minHeight: 145, justifyContent: 'space-between', gap: theme.spacing.md },
+    metadata: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
+    pill: {
+      color: theme.colors.primaryInk,
+      backgroundColor: theme.colors.surface,
+      fontWeight: '700',
+      fontSize: 12,
+      padding: theme.spacing.sm,
+      borderRadius: theme.radius.md,
+      overflow: 'hidden',
+    },
+    avatar: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+    initial: { color: theme.colors.onHero, ...theme.typography.avatar },
+    actions: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
+    action: { flex: 1, minWidth: 130 },
+    dateTile: {
+      width: 42,
+      height: 42,
+      backgroundColor: theme.colors.primaryLight,
+      borderRadius: theme.radius.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    visit: { minHeight: 76, paddingHorizontal: theme.spacing.md },
+    visitPressed: { opacity: 0.7 },
+    atypical: { color: theme.colors.danger, ...theme.typography.caption },
+  });

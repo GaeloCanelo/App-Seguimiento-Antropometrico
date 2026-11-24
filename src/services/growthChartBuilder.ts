@@ -1,3 +1,4 @@
+import { indicatorPalette } from '../views/theme/indicatorPalette';
 import {
   CATALOGO_INDICADORES,
   CodigoIndicador,
@@ -184,8 +185,7 @@ export function construirGeometriaCurvaOMS(params: {
     }
 
     if (params.indicador === 'P_T') {
-      const tablaConsulta =
-        item.consulta.edad_dias < DIAS_CORTE_24_MESES ? 'LONGITUD' : 'TALLA';
+      const tablaConsulta = item.consulta.edad_dias < DIAS_CORTE_24_MESES ? 'LONGITUD' : 'TALLA';
       if (tablaConsulta !== tipoTablaPT) {
         puntosOmitidos.push({
           id_consulta: item.consulta.id_consulta,
@@ -332,13 +332,20 @@ export function construirGeometriaCurvaOMS(params: {
  * Serializa una geometría `GeometriaCurvaOMS` a SVG vectorial puro para embeber en reportes PDF (CU-19).
  */
 export function renderizarCurvaOmsSvgString(geo: GeometriaCurvaOMS): string {
+  const tone = indicatorPalette[geo.indicador].light;
+  const first = geo.curvasReferencia[0];
+  const last = geo.curvasReferencia.at(-1);
+  const band =
+    first && last
+      ? first.puntosStr + ' ' + last.puntosStr.trim().split(/\s+/).reverse().join(' ')
+      : null;
   const xFin = geo.ancho - geo.padRight;
   const yFin = geo.alto - geo.padBottom;
 
   const gridY = geo.marcasY
     .map(
       (m) => `
-      <line x1="${geo.padLeft}" y1="${m.pos.toFixed(1)}" x2="${xFin}" y2="${m.pos.toFixed(1)}" stroke="#E6ECF2" stroke-width="1" />
+      <line x1="${geo.padLeft}" y1="${m.pos.toFixed(1)}" x2="${xFin}" y2="${m.pos.toFixed(1)}" stroke="${tone.ink}" stroke-opacity="0.13" stroke-width="1" />
       <text x="${geo.padLeft - 6}" y="${(m.pos + 3).toFixed(1)}" text-anchor="end" font-size="10" fill="#5C6B7A">${m.etiqueta}</text>`,
     )
     .join('');
@@ -346,21 +353,23 @@ export function renderizarCurvaOmsSvgString(geo: GeometriaCurvaOMS): string {
   const gridX = geo.marcasX
     .map(
       (m) => `
-      <line x1="${m.pos.toFixed(1)}" y1="${geo.padTop}" x2="${m.pos.toFixed(1)}" y2="${yFin}" stroke="#E6ECF2" stroke-width="1" />
+      <line x1="${m.pos.toFixed(1)}" y1="${geo.padTop}" x2="${m.pos.toFixed(1)}" y2="${yFin}" stroke="${tone.ink}" stroke-opacity="0.13" stroke-width="1" />
       <text x="${m.pos.toFixed(1)}" y="${yFin + 14}" text-anchor="middle" font-size="10" fill="#5C6B7A">${m.etiqueta}</text>`,
     )
     .join('');
 
   const curvas = geo.curvasReferencia
-    .map(
-      (c) => `
-      <polyline fill="none" stroke="${c.color}" stroke-width="1.5" ${c.punteada ? 'stroke-dasharray="4,3"' : ''} points="${c.puntosStr}" />
-      <text x="${xFin + 4}" y="${(c.etiquetaY + 3).toFixed(1)}" font-size="9" font-weight="bold" fill="${c.color}">${c.etiqueta}</text>`,
-    )
+    .map((c) => {
+      const limit = c === first || c === last;
+      const median = c.etiqueta === '0' || c.etiqueta === 'P50';
+      return `
+      <polyline fill="none" stroke="${tone.ink}" stroke-opacity="${limit || median ? 0.76 : 0.42}" stroke-width="${median ? 1.7 : 1.25}" ${limit || c.punteada ? 'stroke-dasharray="4,3"' : ''} points="${c.puntosStr}" />
+      <text x="${xFin + 4}" y="${(c.etiquetaY + 3).toFixed(1)}" font-size="9" font-weight="bold" fill="${tone.ink}">${c.etiqueta}</text>`;
+    })
     .join('');
 
   const trayectoria = geo.trayectoriaStr
-    ? `<polyline fill="none" stroke="#0F4C81" stroke-width="2.2" points="${geo.trayectoriaStr}" />`
+    ? `<polyline fill="none" stroke="${tone.ink}" stroke-width="2.2" points="${geo.trayectoriaStr}" />`
     : '';
 
   const puntos = geo.puntosPaciente
@@ -370,20 +379,21 @@ export function renderizarCurvaOmsSvgString(geo: GeometriaCurvaOMS): string {
         : '';
       return `
       ${anillo}
-      <circle cx="${p.svgX.toFixed(1)}" cy="${p.svgY.toFixed(1)}" r="4" fill="${p.esAtipico ? '#EF6C00' : '#0F4C81'}" stroke="#FFFFFF" stroke-width="1.5" />`;
+      <circle cx="${p.svgX.toFixed(1)}" cy="${p.svgY.toFixed(1)}" r="4" fill="${tone.ink}" stroke="${tone.surface}" stroke-width="1.5" />`;
     })
     .join('');
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${geo.ancho} ${geo.alto}" width="100%" style="max-height:280px; background:#FFFFFF; border:1px solid #D6DEE8; border-radius:6px;">
-    <rect x="0" y="0" width="${geo.ancho}" height="${geo.alto}" fill="#FFFFFF" />
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${geo.ancho} ${geo.alto}" width="100%" style="max-height:280px; background:${tone.surface}; border:1px solid ${tone.surface}; border-radius:6px;">
+    <rect x="0" y="0" width="${geo.ancho}" height="${geo.alto}" fill="${tone.surface}" />
     ${gridY}
     ${gridX}
-    <line x1="${geo.padLeft}" y1="${geo.padTop}" x2="${geo.padLeft}" y2="${yFin}" stroke="#9AA8B8" stroke-width="1.2" />
-    <line x1="${geo.padLeft}" y1="${yFin}" x2="${xFin}" y2="${yFin}" stroke="#9AA8B8" stroke-width="1.2" />
+    <line x1="${geo.padLeft}" y1="${geo.padTop}" x2="${geo.padLeft}" y2="${yFin}" stroke="${tone.ink}" stroke-opacity="0.5" stroke-width="1.2" />
+    <line x1="${geo.padLeft}" y1="${yFin}" x2="${xFin}" y2="${yFin}" stroke="${tone.ink}" stroke-opacity="0.5" stroke-width="1.2" />
+    ${band ? `<polygon points="${band}" fill="${tone.ink}" fill-opacity="0.08" />` : ''}
     ${curvas}
     ${trayectoria}
     ${puntos}
-    <text x="${(geo.padLeft + xFin) / 2}" y="${geo.alto - 6}" text-anchor="middle" font-size="11" font-weight="bold" fill="#1B263B">${geo.tituloEjeX}</text>
-    <text x="12" y="${(geo.padTop + yFin) / 2}" text-anchor="middle" font-size="11" font-weight="bold" fill="#1B263B" transform="rotate(-90 12 ${(geo.padTop + yFin) / 2})">${geo.unidadY}</text>
+    <text x="${(geo.padLeft + xFin) / 2}" y="${geo.alto - 6}" text-anchor="middle" font-size="11" font-weight="bold" fill="${tone.ink}">${geo.tituloEjeX}</text>
+    <text x="12" y="${(geo.padTop + yFin) / 2}" text-anchor="middle" font-size="11" font-weight="bold" fill="${tone.ink}" transform="rotate(-90 12 ${(geo.padTop + yFin) / 2})">${geo.unidadY}</text>
   </svg>`;
 }

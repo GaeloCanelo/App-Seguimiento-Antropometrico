@@ -19,7 +19,7 @@ Esta guía configura **Firebase Authentication** y **Cloud Firestore** para la a
    * `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
    * `EXPO_PUBLIC_FIREBASE_APP_ID`
 
-> **Seguridad:** El archivo `.env` está en `.gitignore`; nunca lo subas a GitHub. Compártelo con los integrantes por un canal privado.
+> **Seguridad.** Cada integrante completa su `.env` local con los valores del proyecto de prueba al que tenga acceso. Git ignora este archivo. Las variables `EXPO_PUBLIC_` se incorporan al bundle de Expo, así que solo deben contener la configuración pública del cliente de Firebase. Mantén las contraseñas y las claves de cuentas de servicio fuera de la app.
 
 ## 3. Activar Firebase Authentication (`CU-01` a `CU-06`)
 1. En el menú izquierdo ve a **Build → Authentication → Get started**.

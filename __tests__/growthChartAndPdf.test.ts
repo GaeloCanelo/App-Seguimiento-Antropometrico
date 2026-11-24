@@ -208,5 +208,9 @@ describe('Curvas de crecimiento SVG OMS y plantilla de reporte PDF (CU-18, CU-19
     expect(html).toContain('Clasificación referencial, no diagnóstica.');
     expect(html).toContain('atípico(s) confirmado(s)');
     expect(html).toContain('<svg');
+    expect(html).toContain('background:#F2E9FF');
+    const talla = construirHtmlReporteClinico({ paciente, detalle, indicadorGrafica: 'T_E' });
+    expect(talla).toContain('background:#E4F7F3');
+    expect(talla).toContain('stroke="#16736A"');
   });
 });

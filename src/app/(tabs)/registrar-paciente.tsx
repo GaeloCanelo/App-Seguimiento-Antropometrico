@@ -1,109 +1,118 @@
 import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Sexo } from '../../domain';
+import { randomUUID } from 'expo-crypto';
+import { useState } from 'react';
+import { Pressable, Text } from 'react-native';
+import type { Sexo } from '../../domain';
 import { usePatientsViewModel } from '../../viewmodels/usePatientsViewModel';
+import { useFeedback } from '../../views/components/DialogProvider';
 import { FormField } from '../../views/components/FormField';
+import { FormScroll, GradientCard, Notice, useUI } from '../../views/components/KidoLogUI';
+import { Masthead } from '../../views/components/Masthead';
+import { PatientFields } from '../../views/components/PatientFields';
 import { PrimaryButton } from '../../views/components/PrimaryButton';
-import { theme } from '../../views/theme/tokens';
+import { erroresPaciente } from '../../views/utils/clinicalFormErrors';
+import { mensajeEnEspanol } from '../../views/utils/formErrors';
+import { folioAutomatico } from '../../views/utils/patientDisplay';
+import { dateFromField } from '../../views/utils/clinicalDisplay';
 
-/** CU-07: Registrar nuevo paciente (0 a 60 meses). */
 export default function RegistrarPacienteScreen() {
+  const ui = useUI();
+  const feedback = useFeedback();
   const { registrarPaciente } = usePatientsViewModel();
   const [folio, setFolio] = useState('');
+  const [manual, setManual] = useState(false);
   const [nombre, setNombre] = useState('');
   const [sexo, setSexo] = useState<Sexo>('M');
   const [fechaNacimiento, setFechaNacimiento] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [fields, setFields] = useState<Partial<Record<string, string>>>({});
   const [guardando, setGuardando] = useState(false);
 
   const guardar = async () => {
     setError(null);
+    const values = {
+      folio_clinico: manual ? folio : folioAutomatico(randomUUID()),
+      nombre,
+      sexo,
+      fecha_nacimiento: dateFromField(fechaNacimiento),
+    };
+    const issues = erroresPaciente(values);
+    setFields(issues);
+    if (Object.keys(issues).length) return;
     setGuardando(true);
     try {
-      const creado = await registrarPaciente({
-        folio_clinico: folio,
-        nombre,
-        sexo,
-        fecha_nacimiento: fechaNacimiento,
-      });
+      const creado = await registrarPaciente(values);
       setFolio('');
+      setManual(false);
       setNombre('');
+      setSexo('M');
       setFechaNacimiento('');
-      router.replace(`/paciente/${creado.id_paciente}`);
+      feedback('Paciente registrado.');
+      router.push(`/paciente/${creado.id_paciente}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'No fue posible guardar el paciente.');
+      setError(mensajeEnEspanol(err, 'No fue posible guardar el paciente.'));
     } finally {
       setGuardando(false);
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      {error ? <Text style={styles.errorBox}>{error}</Text> : null}
-
-      <FormField
-        label="Folio clínico"
-        value={folio}
-        onChangeText={setFolio}
-        placeholder="Ej. GAM-001"
+    <FormScroll
+      info="Atención antropométrica de 0 a 60 meses."
+      masthead={
+        <Masthead
+          title="Registrar paciente"
+          onBack={() => router.navigate('/(tabs)/pacientes')}
+          compact
+        />
+      }
+    >
+      <GradientCard>
+        <Text style={ui.title}>Folio clínico</Text>
+        <Text style={ui.muted}>
+          {manual ? 'Usa el folio de tu expediente.' : 'Asignación automática al guardar'}
+        </Text>
+        <Pressable accessibilityRole="button" onPress={() => setManual((value) => !value)}>
+          <Text style={ui.link}>
+            {manual ? 'Usar asignación automática' : 'Usar un folio propio'}
+          </Text>
+        </Pressable>
+      </GradientCard>
+      {manual ? (
+        <FormField
+          label="Folio clínico"
+          icon="lock"
+          value={folio}
+          error={fields.folio_clinico}
+          onChangeText={(value) => {
+            setFolio(value);
+            setFields((previous) => ({ ...previous, folio_clinico: undefined }));
+          }}
+        />
+      ) : null}
+      <PatientFields
+        name={nombre}
+        nameError={fields.nombre}
+        onName={(value) => {
+          setNombre(value);
+          setFields((previous) => ({ ...previous, nombre: undefined }));
+        }}
+        sex={sexo}
+        onSex={setSexo}
+        date={fechaNacimiento}
+        dateError={fields.fecha_nacimiento}
+        onDate={(value) => {
+          setFechaNacimiento(value);
+          setFields((previous) => ({ ...previous, fecha_nacimiento: undefined }));
+        }}
       />
-      <FormField
-        label="Nombre completo del infante"
-        value={nombre}
-        onChangeText={setNombre}
-        placeholder="Nombre y apellidos"
+      {error ? <Notice tone="error">{error}</Notice> : null}
+      <PrimaryButton
+        title="Guardar paciente"
+        variant="accent"
+        loading={guardando}
+        onPress={guardar}
       />
-
-      <Text style={styles.label}>Sexo</Text>
-      <View style={styles.row}>
-        {(['M', 'F'] as Sexo[]).map((op) => (
-          <Pressable
-            key={op}
-            onPress={() => setSexo(op)}
-            style={[styles.chip, sexo === op && styles.chipSelected]}
-          >
-            <Text style={[styles.chipText, sexo === op && styles.chipTextSelected]}>
-              {op === 'M' ? 'Masculino' : 'Femenino'}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <FormField
-        label="Fecha de nacimiento"
-        value={fechaNacimiento}
-        onChangeText={setFechaNacimiento}
-        placeholder="AAAA-MM-DD"
-        hint="Formato: AAAA-MM-DD (edad permitida: 0 a 60 meses)"
-      />
-
-      <PrimaryButton title="Guardar paciente" onPress={guardar} loading={guardando} />
-    </ScrollView>
+    </FormScroll>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { padding: theme.spacing.md },
-  label: { fontSize: 14, fontWeight: '600', color: theme.colors.text, marginBottom: 6 },
-  row: { flexDirection: 'row', gap: 10, marginBottom: theme.spacing.md },
-  chip: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-    alignItems: 'center',
-  },
-  chipSelected: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primaryLight },
-  chipText: { color: theme.colors.text, fontWeight: '600' },
-  chipTextSelected: { color: theme.colors.primary },
-  errorBox: {
-    backgroundColor: '#FDECEA',
-    color: theme.colors.danger,
-    padding: 12,
-    borderRadius: theme.radius.sm,
-    marginBottom: theme.spacing.md,
-  },
-});

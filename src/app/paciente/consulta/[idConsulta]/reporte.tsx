@@ -1,11 +1,12 @@
+import { folioVisible } from '../../../../views/utils/patientDisplay';
 import { useLocalSearchParams } from 'expo-router';
-import React, { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import {
   CATALOGO_INDICADORES,
-  CodigoIndicador,
   clasificarIndicador,
   formatearEdadMesesYDias,
+  type CodigoIndicador,
 } from '../../../../domain';
 import { construirGeometriaCurvaOMS } from '../../../../services/growthChartBuilder';
 import {
@@ -13,46 +14,83 @@ import {
   generarYCompartirReportePdf,
 } from '../../../../services/pdfReportService';
 import { useResultsViewModel } from '../../../../viewmodels/useResultsViewModel';
-import { ClinicalDisclaimerBanner } from '../../../../views/components/ClinicalDisclaimerBanner';
-import { GrowthCurveSvg } from '../../../../views/components/GrowthCurveSvg';
+import { ClinicalScreen } from '../../../../views/components/ClinicalScreen';
+import { ZoomableGrowthCurve } from '../../../../views/components/ZoomableGrowthCurve';
+import { KidoLogCard } from '../../../../views/components/KidoLogCard';
+import {
+  Choices,
+  Gradient,
+  Notice,
+  ScreenFeedback,
+  useUI,
+} from '../../../../views/components/KidoLogUI';
 import { PrimaryButton } from '../../../../views/components/PrimaryButton';
-import { theme } from '../../../../views/theme/tokens';
+import { useAppearance, useThemedStyles } from '../../../../views/theme/ThemeProvider';
+import type { KidoLogTheme } from '../../../../views/theme/tokens';
+import { displayDate } from '../../../../views/utils/clinicalDisplay';
+import { indicatorDesign, indicatorOptions } from '../../../../views/utils/indicators';
 
-/** CU-19: Vista previa completa y exportación de reporte PDF anonimizado ([Folio]_[Fecha].pdf). */
 export default function ReportePdfScreen() {
+  const styles = useThemedStyles(createStyles);
+  const { mode, theme } = useAppearance();
+  const ui = useUI();
   const { idConsulta } = useLocalSearchParams<{ idConsulta: string }>();
-  const { detalle, paciente, historialConsultas, cargando } = useResultsViewModel(idConsulta);
+  const { detalle, paciente, historialConsultas, cargando, error } = useResultsViewModel(
+    idConsulta,
+    undefined,
+    true,
+  );
   const [indicadorGrafica, setIndicadorGrafica] = useState<CodigoIndicador>('P_E');
   const [exportando, setExportando] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const exporting = useRef(false);
 
-  const geometriaGrafica = useMemo(() => {
+  const chart = useMemo(() => {
     if (!paciente || !detalle) return null;
-    const consultasHastaFecha = historialConsultas.filter(
-      (c) => c.consulta.fecha_consulta <= detalle.consulta.fecha_consulta,
+    const eligible = historialConsultas.filter(
+      (item) => item.consulta.fecha_consulta <= detalle.consulta.fecha_consulta,
     );
     return construirGeometriaCurvaOMS({
       indicador: indicadorGrafica,
       sexo: paciente.sexo,
       vista: 'Z',
       fechaNacimiento: paciente.fecha_nacimiento,
-      consultas: consultasHastaFecha.length > 0 ? consultasHastaFecha : [detalle],
+      consultas: eligible.length ? eligible : [detalle],
     });
   }, [detalle, historialConsultas, indicadorGrafica, paciente]);
 
-  if (cargando || !detalle || !paciente || !geometriaGrafica) {
+  if (!detalle || !paciente || !chart)
     return (
-      <View style={styles.center}>
-        <Text style={styles.muted}>Preparando vista previa del reporte...</Text>
-      </View>
+      <ClinicalScreen title="Reporte PDF">
+        <ScreenFeedback loading={cargando} error={error} empty="Consulta no encontrada." />
+      </ClinicalScreen>
     );
-  }
 
   const { consulta, resultados } = detalle;
-  const nombreArchivo = construirNombreArchivoPdf(paciente.folio_clinico, consulta.fecha_consulta);
-  const edadTexto = formatearEdadMesesYDias(paciente.fecha_nacimiento, consulta.fecha_consulta).texto;
+  const age = formatearEdadMesesYDias(paciente.fecha_nacimiento, consulta.fecha_consulta).texto;
+  const filename = construirNombreArchivoPdf(paciente.folio_clinico, consulta.fecha_consulta);
+  const position = consulta.posicion_medicion === 'ACOSTADO' ? 'Acostado' : 'De pie';
+  const adjusted = consulta.longitud_talla_cm !== consulta.longitud_talla_ajustada_cm;
+  const rows = [
+    ['Paciente', paciente.nombre],
+    ['Folio', folioVisible(paciente.folio_clinico)],
+    ['Sexo / edad', `${paciente.sexo === 'M' ? 'Masculino' : 'Femenino'} · ${age}`],
+    ['Consulta', displayDate(consulta.fecha_consulta)],
+    [
+      'Mediciones',
+      `${consulta.peso_kg.toFixed(2)} kg · ${consulta.longitud_talla_cm.toFixed(1)} cm · PC ${consulta.perimetro_cefalico_cm.toFixed(1)} cm`,
+    ],
+    [
+      'Posición',
+      `${position} · ${adjusted ? `talla ajustada ${consulta.longitud_talla_ajustada_cm.toFixed(1)} cm` : 'sin corrección'}`,
+    ],
+  ];
 
   const exportar = async () => {
+    if (exporting.current) return;
+    exporting.current = true;
     setExportando(true);
+    setExportError(null);
     try {
       await generarYCompartirReportePdf({
         paciente,
@@ -60,141 +98,96 @@ export default function ReportePdfScreen() {
         historialConsultas,
         indicadorGrafica,
       });
-    } catch (err: unknown) {
-      Alert.alert('Error al generar PDF', err instanceof Error ? err.message : 'Intenta de nuevo.');
+    } catch (reason) {
+      setExportError(reason instanceof Error ? reason.message : 'No se pudo compartir el reporte.');
     } finally {
+      exporting.current = false;
       setExportando(false);
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <ClinicalDisclaimerBanner />
-
-      <View style={styles.previewCard}>
-        <Text style={styles.title}>Vista previa del reporte clínico</Text>
-        <Text style={styles.fileBadge}>Archivo a exportar: {nombreArchivo}</Text>
-        <Text style={styles.meta}>
-          Folio: {paciente.folio_clinico} · Nombre: {paciente.nombre}
-        </Text>
-        <Text style={styles.meta}>
-          Sexo: {paciente.sexo === 'M' ? 'Masculino' : 'Femenino'} · Edad: {edadTexto} · Fecha:{' '}
-          {consulta.fecha_consulta}
-        </Text>
-        <Text style={styles.meta}>
-          Peso: {consulta.peso_kg.toFixed(2)} kg · Talla: {consulta.longitud_talla_cm.toFixed(1)} cm
-          (Ajustada: {consulta.longitud_talla_ajustada_cm.toFixed(1)} cm) · PC:{' '}
-          {consulta.perimetro_cefalico_cm.toFixed(1)} cm
-        </Text>
-
+    <ClinicalScreen
+      title="Reporte PDF"
+      footer={
+        <PrimaryButton title="Exportar o compartir PDF" onPress={exportar} loading={exportando} />
+      }
+    >
+      <KidoLogCard style={styles.report}>
+        <View style={[ui.between, styles.reportIdentity]}>
+          <Text style={styles.brand}>KidoLog</Text>
+          <Text style={ui.muted}>Informe de consulta</Text>
+        </View>
+        <View style={styles.divider}>
+          <Gradient colors={theme.colors.heroGradient} />
+        </View>
+        <Text style={ui.section}>Seguimiento antropométrico</Text>
+        {rows.map(([label, value]) => (
+          <View key={label} style={styles.row}>
+            <Text style={[ui.muted, styles.key]}>{label}</Text>
+            <Text style={[ui.title, styles.value]}>{value}</Text>
+          </View>
+        ))}
         {consulta.atipico_confirmado ? (
-          <Text style={styles.atipicoBox}>
-            Marca clínica: Consulta con valor(es) atípico(s) confirmado(s).
+          <Text style={[ui.muted, { color: theme.colors.warning }]}>
+            Valores atípicos confirmados
           </Text>
         ) : null}
-
-        <View style={styles.table}>
-          {CATALOGO_INDICADORES.map((meta) => {
-            const r = resultados.find((x) => x.codigo_indicador === meta.codigo_indicador);
-            const aplica = r && r.estado === 'CALCULADO' && r.puntaje_z !== null && r.percentil !== null;
-            const clasif =
-              aplica && r.puntaje_z !== null
-                ? clasificarIndicador(meta.codigo_indicador, r.puntaje_z)
-                : null;
-
-            return (
-              <View key={meta.codigo_indicador} style={styles.tableRow}>
-                <Text style={styles.tableInd}>{meta.codigo_indicador}</Text>
-                {aplica && r.puntaje_z !== null && r.percentil !== null && clasif ? (
-                  <Text style={styles.tableVal}>
-                    Z: {r.puntaje_z.toFixed(2)} · P: {r.percentil.toFixed(1)} ·{' '}
-                    <Text style={{ color: clasif.colorHex, fontWeight: '700' }}>
-                      {clasif.etiqueta}
-                    </Text>
-                    {r.es_atipico ? ' [Atípico]' : ''}
-                  </Text>
-                ) : (
-                  <Text style={styles.tableVal}>No aplica</Text>
-                )}
-              </View>
-            );
-          })}
-        </View>
-      </View>
-
-      <Text style={styles.sectionLabel}>Gráfica incluida en el PDF:</Text>
-      <View style={styles.chipRow}>
-        {CATALOGO_INDICADORES.map((item) => (
-          <Pressable
-            key={item.codigo_indicador}
-            onPress={() => setIndicadorGrafica(item.codigo_indicador)}
-            style={[
-              styles.chip,
-              indicadorGrafica === item.codigo_indicador && styles.chipSelected,
-            ]}
-          >
-            <Text
-              style={[
-                styles.chipText,
-                indicadorGrafica === item.codigo_indicador && styles.chipTextSelected,
-              ]}
-            >
-              {item.codigo_indicador}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <View style={styles.chartWrapper}>
-        <GrowthCurveSvg geometria={geometriaGrafica} idConsultaSeleccionada={consulta.id_consulta} />
-      </View>
-
-      <PrimaryButton title="Exportar PDF" onPress={exportar} loading={exportando} />
-    </ScrollView>
+        <Text style={ui.section}>Resultados OMS</Text>
+        {CATALOGO_INDICADORES.map(({ codigo_indicador: code }) => {
+          const result = resultados.find((value) => value.codigo_indicador === code);
+          const z = result?.puntaje_z;
+          const centile = result?.percentil;
+          const display =
+            result?.estado === 'CALCULADO' && z != null && centile != null
+              ? `${z.toFixed(2)} / ${centile.toFixed(1)} · ${clasificarIndicador(code, z).etiqueta}${result.es_atipico ? ' · Atípico' : ''}`
+              : 'No aplica';
+          return (
+            <View key={code} style={styles.row}>
+              <Text
+                style={[
+                  styles.key,
+                  {
+                    color: indicatorDesign[code][mode].ink,
+                  },
+                ]}
+              >
+                {indicatorDesign[code].label}
+              </Text>
+              <Text style={[ui.title, styles.value]}>{display}</Text>
+            </View>
+          );
+        })}
+        <Text style={ui.title}>Curva de crecimiento</Text>
+        <Choices
+          options={indicatorOptions(mode)}
+          value={indicadorGrafica}
+          onChange={setIndicadorGrafica}
+        />
+        <ZoomableGrowthCurve
+          key={indicadorGrafica}
+          geometria={chart}
+          idConsultaSeleccionada={consulta.id_consulta}
+        />
+        <Text style={ui.muted}>Clasificación referencial, no diagnóstica.</Text>
+      </KidoLogCard>
+      <Text style={ui.muted}>Archivo: {filename}</Text>
+      {error || exportError ? <Notice tone="error">{exportError ?? error ?? ''}</Notice> : null}
+    </ClinicalScreen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { padding: theme.spacing.md, paddingBottom: theme.spacing.xl },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  previewCard: {
-    backgroundColor: theme.colors.surface,
-    padding: theme.spacing.md,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginBottom: theme.spacing.md,
-    gap: 4,
-  },
-  title: { fontSize: 16, fontWeight: '700', color: theme.colors.primary, marginBottom: 4 },
-  fileBadge: { fontSize: 12, fontWeight: '700', color: theme.colors.accent, marginBottom: 4 },
-  meta: { fontSize: 13, color: theme.colors.text },
-  atipicoBox: {
-    marginTop: 6,
-    padding: 8,
-    borderRadius: 6,
-    backgroundColor: '#FFF3E0',
-    color: theme.colors.warning,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  table: { marginTop: 10, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 8, gap: 6 },
-  tableRow: { flexDirection: 'row', gap: 8 },
-  tableInd: { width: 52, fontSize: 12, fontWeight: '700', color: theme.colors.primary },
-  tableVal: { flex: 1, fontSize: 12, color: theme.colors.text },
-  sectionLabel: { fontSize: 13, fontWeight: '700', color: theme.colors.text, marginBottom: 6 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: theme.spacing.sm },
-  chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-  },
-  chipSelected: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primaryLight },
-  chipText: { fontSize: 12, fontWeight: '600', color: theme.colors.text },
-  chipTextSelected: { color: theme.colors.primary },
-  chartWrapper: { marginBottom: theme.spacing.md },
-  muted: { fontSize: 14, color: theme.colors.textMuted },
-});
+const createStyles = (theme: KidoLogTheme) =>
+  StyleSheet.create({
+    report: { padding: theme.spacing.md, gap: theme.spacing.compact },
+    reportIdentity: {
+      backgroundColor: theme.colors.peachSurface,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.compact,
+    },
+    brand: { color: theme.colors.peachInk, ...theme.typography.sectionTitle },
+    divider: { height: 3, overflow: 'hidden' },
+    row: { flexDirection: 'row', gap: theme.spacing.sm },
+    key: { flex: 1, ...theme.typography.bodySmall },
+    value: { flex: 2, fontSize: 12 },
+  });

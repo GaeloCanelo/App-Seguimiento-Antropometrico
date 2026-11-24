@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Paciente, Sexo } from '../domain';
 import { useApp } from './AppProvider';
 
@@ -6,32 +6,33 @@ export function usePatientsViewModel() {
   const { medico, pacienteRepo, refrescarPendientes, sincronizarAhora, hayConexion } = useApp();
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [busqueda, setBusqueda] = useState('');
-  const [cargando, setCargando] = useState(false);
+  const [cargando, setCargando] = useState(true);
+  const ultimaSolicitud = useRef(0);
   const [error, setError] = useState<string | null>(null);
 
   const cargarPacientes = useCallback(
     async (filtro = busqueda) => {
+      const solicitud = ++ultimaSolicitud.current;
       if (!pacienteRepo || !medico) {
         setPacientes([]);
+        setCargando(false);
         return;
       }
       setCargando(true);
       setError(null);
       try {
         const lista = await pacienteRepo.buscar(medico.uid_medico, filtro);
-        setPacientes(lista);
+        if (solicitud === ultimaSolicitud.current) setPacientes(lista);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Error al consultar pacientes.');
+        if (solicitud === ultimaSolicitud.current) {
+          setError(err instanceof Error ? err.message : 'Error al consultar pacientes.');
+        }
       } finally {
-        setCargando(false);
+        if (solicitud === ultimaSolicitud.current) setCargando(false);
       }
     },
     [busqueda, medico, pacienteRepo],
   );
-
-  useEffect(() => {
-    cargarPacientes(busqueda);
-  }, [busqueda, cargarPacientes]);
 
   const registrarPaciente = useCallback(
     async (params: {
@@ -52,7 +53,15 @@ export function usePatientsViewModel() {
       await cargarPacientes(busqueda);
       return nuevo;
     },
-    [busqueda, cargarPacientes, hayConexion, medico, pacienteRepo, refrescarPendientes, sincronizarAhora],
+    [
+      busqueda,
+      cargarPacientes,
+      hayConexion,
+      medico,
+      pacienteRepo,
+      refrescarPendientes,
+      sincronizarAhora,
+    ],
   );
 
   const actualizarPaciente = useCallback(

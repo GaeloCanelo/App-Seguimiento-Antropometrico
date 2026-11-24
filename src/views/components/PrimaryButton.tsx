@@ -1,13 +1,14 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
-import { theme } from '../theme/tokens';
+import { useAppearance, useThemedStyles } from '../theme/ThemeProvider';
+import type { KidoLogTheme } from '../theme/tokens';
 
 interface PrimaryButtonProps {
   title: string;
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary' | 'danger';
+  variant?: 'primary' | 'secondary' | 'danger' | 'accent';
 }
 
 export function PrimaryButton({
@@ -17,24 +18,39 @@ export function PrimaryButton({
   disabled = false,
   variant = 'primary',
 }: PrimaryButtonProps) {
+  const styles = useThemedStyles(createStyles);
+  const { theme, reduceMotion } = useAppearance();
   const bg =
     variant === 'danger'
-      ? theme.colors.danger
-      : variant === 'secondary'
-        ? theme.colors.surface
-        : theme.colors.primary;
-  const fg = variant === 'secondary' ? theme.colors.primary : '#FFFFFF';
+      ? theme.colors.dangerFill
+      : variant === 'accent'
+        ? theme.colors.indigoAction
+        : variant === 'secondary'
+          ? theme.colors.primaryLight
+          : theme.colors.primary;
+  const fg =
+    variant === 'danger'
+      ? theme.colors.onDanger
+      : variant === 'accent'
+        ? theme.colors.onIndigoAction
+        : variant === 'secondary'
+          ? theme.colors.primaryInk
+          : theme.colors.onPrimary;
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
       onPress={onPress}
       disabled={disabled || loading}
       style={({ pressed }) => [
         styles.button,
         { backgroundColor: bg },
-        variant === 'secondary' && styles.secondaryBorder,
+
         (disabled || loading) && styles.disabled,
         pressed && styles.pressed,
+        pressed && !reduceMotion && styles.pressedMotion,
       ]}
     >
       {loading ? (
@@ -46,27 +62,26 @@ export function PrimaryButton({
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    paddingVertical: 14,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: theme.radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-  },
-  secondaryBorder: {
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
-  },
-  disabled: {
-    opacity: 0.55,
-  },
-  pressed: {
-    opacity: 0.85,
-  },
-  text: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-});
+const createStyles = (theme: KidoLogTheme) =>
+  StyleSheet.create({
+    button: {
+      paddingVertical: 14,
+      paddingHorizontal: theme.spacing.md,
+      borderRadius: theme.radius.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 52,
+    },
+    disabled: {
+      opacity: 0.55,
+    },
+    pressed: {
+      opacity: 0.82,
+    },
+    pressedMotion: { transform: [{ scale: 0.985 }] },
+    text: {
+      ...theme.typography.button,
+      fontSize: 14,
+      textAlign: 'center',
+    },
+  });

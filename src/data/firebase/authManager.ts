@@ -28,9 +28,7 @@ export function validarCredencialesFormato(correo: string, contrasena: string): 
 
 export class CambiosPendientesError extends Error {
   constructor(public readonly totalPendientes: number) {
-    super(
-      `Existen ${totalPendientes} cambios sin sincronizar que se perderían al cerrar sesión.`,
-    );
+    super(`Existen ${totalPendientes} cambios sin sincronizar que se perderían al cerrar sesión.`);
     this.name = 'CambiosPendientesError';
   }
 }
@@ -97,11 +95,7 @@ export class AuthManager {
 
     const { auth } = obtenerServiciosFirebase();
     try {
-      const cred = await signInWithEmailAndPassword(
-        auth,
-        params.correo.trim(),
-        params.contrasena,
-      );
+      const cred = await signInWithEmailAndPassword(auth, params.correo.trim(), params.contrasena);
       const perfilRemoto = await this.remoteSync.obtenerPerfilMedico(cred.user.uid);
       return await this.medicoRepo.guardarPerfil({
         uid_medico: cred.user.uid,
@@ -109,7 +103,14 @@ export class AuthManager {
         nombre: perfilRemoto?.nombre ?? null,
         apellidos: perfilRemoto?.apellidos ?? null,
       });
-    } catch {
+    } catch (error) {
+      const code = (error as { code?: string } | null)?.code;
+      if (
+        code === 'auth/network-request-failed' ||
+        code === 'auth/too-many-requests' ||
+        code === 'unavailable'
+      )
+        throw error;
       // Criterio HU-02 (2): mensaje genérico sin indicar qué dato falló
       throw new Error('Correo o contraseña incorrectos.');
     }
@@ -124,6 +125,7 @@ export class AuthManager {
       throw new Error('Ingresa un correo electrónico válido.');
     }
     const { auth } = obtenerServiciosFirebase();
+    auth.languageCode = 'es';
     try {
       await sendPasswordResetEmail(auth, correo.trim());
     } catch (err: unknown) {
