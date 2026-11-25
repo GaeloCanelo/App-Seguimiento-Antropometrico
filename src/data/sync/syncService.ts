@@ -212,7 +212,7 @@ export class SyncService {
            ultima_sincronizacion_en = excluded.ultima_sincronizacion_en`,
         params.uid_medico,
         params.id_dispositivo,
-        delta.nuevoCursor ?? estadoDisp?.cursor_remoto ?? ahora,
+        delta.nuevoCursor ?? estadoDisp?.cursor_remoto ?? null,
         ahora,
       );
     });

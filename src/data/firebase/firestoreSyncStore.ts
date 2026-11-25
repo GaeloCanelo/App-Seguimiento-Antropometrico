@@ -43,12 +43,13 @@ export class FirestoreSyncStore implements RemoteSyncStore {
     pacienteDoc: PacienteRemotoDoc,
   ): Promise<{ revisionRemota: number; confirmadoEn: string }> {
     const { firestore } = obtenerServiciosFirebase();
+    const confirmadoEn = ahoraUtcIso();
     await setDoc(
       doc(firestore, 'medicos', uidMedico, 'pacientes', pacienteDoc.id_paciente),
-      pacienteDoc,
+      { ...pacienteDoc, confirmado_servidor_en: confirmadoEn },
       { merge: true },
     );
-    return { revisionRemota: pacienteDoc.revision_remota, confirmadoEn: ahoraUtcIso() };
+    return { revisionRemota: pacienteDoc.revision_remota, confirmadoEn };
   }
 
   async subirConsulta(
@@ -56,12 +57,13 @@ export class FirestoreSyncStore implements RemoteSyncStore {
     consultaDoc: ConsultaRemotaDoc,
   ): Promise<{ revisionRemota: number; confirmadoEn: string }> {
     const { firestore } = obtenerServiciosFirebase();
+    const confirmadoEn = ahoraUtcIso();
     await setDoc(
       doc(firestore, 'medicos', uidMedico, 'consultas', consultaDoc.id_consulta),
-      consultaDoc,
+      { ...consultaDoc, confirmado_servidor_en: confirmadoEn },
       { merge: true },
     );
-    return { revisionRemota: consultaDoc.revision_remota, confirmadoEn: ahoraUtcIso() };
+    return { revisionRemota: consultaDoc.revision_remota, confirmadoEn };
   }
 
   async descargarCambios(
@@ -73,27 +75,37 @@ export class FirestoreSyncStore implements RemoteSyncStore {
     const conRef = collection(firestore, 'medicos', uidMedico, 'consultas');
 
     const pacQuery = cursorRemoto
-      ? query(pacRef, where('actualizado_en', '>', cursorRemoto), orderBy('actualizado_en', 'asc'))
-      : query(pacRef, orderBy('actualizado_en', 'asc'));
+      ? query(
+          pacRef,
+          where('confirmado_servidor_en', '>', cursorRemoto),
+          orderBy('confirmado_servidor_en', 'asc'),
+        )
+      : query(pacRef, orderBy('confirmado_servidor_en', 'asc'));
 
     const conQuery = cursorRemoto
-      ? query(conRef, where('actualizado_en', '>', cursorRemoto), orderBy('actualizado_en', 'asc'))
-      : query(conRef, orderBy('actualizado_en', 'asc'));
+      ? query(
+          conRef,
+          where('confirmado_servidor_en', '>', cursorRemoto),
+          orderBy('confirmado_servidor_en', 'asc'),
+        )
+      : query(conRef, orderBy('confirmado_servidor_en', 'asc'));
 
     const [pacSnap, conSnap] = await Promise.all([getDocs(pacQuery), getDocs(conQuery)]);
 
     const pacientes = pacSnap.docs.map((d) => d.data() as PacienteRemotoDoc);
     const consultas = conSnap.docs.map((d) => d.data() as ConsultaRemotaDoc);
 
-    let maxTs = cursorRemoto;
+    let maxCursor = cursorRemoto;
     for (const p of pacientes) {
-      if (!maxTs || p.actualizado_en > maxTs) maxTs = p.actualizado_en;
+      const ts = p.confirmado_servidor_en ?? p.actualizado_en;
+      if (!maxCursor || ts > maxCursor) maxCursor = ts;
     }
     for (const c of consultas) {
-      if (!maxTs || c.actualizado_en > maxTs) maxTs = c.actualizado_en;
+      const ts = c.confirmado_servidor_en ?? c.actualizado_en;
+      if (!maxCursor || ts > maxCursor) maxCursor = ts;
     }
 
-    return { pacientes, consultas, nuevoCursor: maxTs };
+    return { pacientes, consultas, nuevoCursor: maxCursor };
   }
 
   async eliminarTodoDeMedico(uidMedico: string): Promise<void> {

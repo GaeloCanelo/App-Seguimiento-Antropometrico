@@ -50,7 +50,7 @@ export function ConsultationEditor({
   const ui = useUI();
   const {
     sugerirPosicionPorFecha,
-    previsualizarAtipicos,
+    previsualizarAdvertencias,
     verificarDuplicadoMismaFecha,
     guardarConsulta,
     corregirConsulta,
@@ -106,7 +106,11 @@ export function ConsultationEditor({
     setBusy(true);
     try {
       const id_paciente = patient.id_paciente;
-      const preview = await previsualizarAtipicos({ id_paciente, ...values });
+      const preview = await previsualizarAdvertencias({
+        id_paciente,
+        excluir_id_consulta: consultation?.id_consulta,
+        ...values,
+      });
       if (
         consultation?.fecha_consulta !== isoDate &&
         (await verificarDuplicadoMismaFecha(id_paciente, isoDate))
@@ -121,12 +125,23 @@ export function ConsultationEditor({
         )
           return;
       }
+      const warnings: string[] = [];
+      if (preview.hayAtipicos) {
+        warnings.push(
+          'Uno o más indicadores superan los límites de plausibilidad de la OMS.',
+        );
+      }
+      if (preview.avisosDecremento.length > 0) {
+        warnings.push(...preview.avisosDecremento);
+      }
       if (
-        preview.hay_atipicos &&
+        warnings.length > 0 &&
         !(await confirm(
           dialog,
-          'Valor biológicamente improbable',
-          'Uno o más indicadores superan los límites de plausibilidad de la OMS. Puedes corregir los datos o confirmar el valor.',
+          preview.hayAtipicos
+            ? 'Valor biológicamente improbable'
+            : 'Aviso de medición longitudinal',
+          `${warnings.join('\n\n')}\n\nPuedes corregir los datos o confirmar el valor.`,
           'Confirmar valor',
         ))
       )
@@ -136,7 +151,7 @@ export function ConsultationEditor({
         await corregirConsulta({
           id_consulta: consultation.id_consulta,
           ...values,
-          atipico_confirmado: preview.hay_atipicos,
+          atipico_confirmado: preview.hayAtipicos,
         });
         feedback('Consulta actualizada.');
         router.dismissTo(`/paciente/consulta/${consultation.id_consulta}`);
@@ -144,7 +159,7 @@ export function ConsultationEditor({
         const saved = await guardarConsulta({
           id_paciente,
           ...values,
-          atipico_confirmado: preview.hay_atipicos,
+          atipico_confirmado: preview.hayAtipicos,
         });
         feedback('Consulta guardada.');
         router.replace(`/paciente/consulta/${saved.consulta.id_consulta}`);
