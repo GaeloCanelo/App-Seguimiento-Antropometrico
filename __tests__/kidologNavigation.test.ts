@@ -78,7 +78,9 @@ it('preserva los SVG originales en el bundle, sin referencias a archivos remotos
   for (const [name, markup] of Object.entries(artwork)) {
     const file = join(process.cwd(), 'assets', 'kidolog', name + '.svg');
     expect(markup).toMatch(/^<svg\b/);
-    expect(markup).toBe(readFileSync(file, 'utf8').trim());
+    expect(markup.replace(/\r\n/g, '\n')).toBe(
+      readFileSync(file, 'utf8').replace(/\r\n/g, '\n').trim(),
+    );
     expect(markup).not.toMatch(/(?:href|src)="https?:/);
   }
 });
