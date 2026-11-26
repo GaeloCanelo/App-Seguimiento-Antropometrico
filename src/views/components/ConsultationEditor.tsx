@@ -11,6 +11,7 @@ import { mensajeEnEspanol } from '../utils/formErrors';
 import { folioVisible } from '../utils/patientDisplay';
 import { dateFromField, displayDate, measurementFromField } from '../utils/clinicalDisplay';
 import { consultationDateBounds, todayForPicker } from '../utils/dateBounds';
+import { useUnsavedChangesGuard } from '../utils/useUnsavedChangesGuard';
 import { useDialog, useFeedback } from './DialogProvider';
 import { DateField } from './DateField';
 import { DesignSvg } from './DesignSvg';
@@ -56,10 +57,11 @@ export function ConsultationEditor({
     corregirConsulta,
   } = useConsultationViewModel();
   const bounds = consultationDateBounds(patient.fecha_nacimiento);
-  const [date, setDate] = useState(
+  const [initialDate] = useState(
     () =>
       consultation?.fecha_consulta ?? (bounds?.maximum === todayForPicker() ? bounds.maximum : ''),
   );
+  const [date, setDate] = useState(initialDate);
   const [peso, setPeso] = useState(consultation ? String(consultation.peso_kg) : '');
   const [talla, setTalla] = useState(consultation ? String(consultation.longitud_talla_cm) : '');
   const [pc, setPc] = useState(consultation ? String(consultation.perimetro_cefalico_cm) : '');
@@ -72,6 +74,14 @@ export function ConsultationEditor({
   const submitting = useRef(false);
   const isoDate = dateFromField(date);
   const position = manualPosition ?? sugerirPosicionPorFecha(patient.fecha_nacimiento, isoDate);
+  const dirty = consultation
+    ? date !== consultation.fecha_consulta ||
+      peso !== String(consultation.peso_kg) ||
+      talla !== String(consultation.longitud_talla_cm) ||
+      pc !== String(consultation.perimetro_cefalico_cm) ||
+      position !== consultation.posicion_medicion
+    : Boolean(peso || talla || pc || manualPosition !== null || date !== initialDate);
+  const { allowAndRun } = useUnsavedChangesGuard(dirty);
   const age = formatearEdadMesesYDias(
     patient.fecha_nacimiento,
     new Date().toISOString().slice(0, 10),
@@ -154,7 +164,7 @@ export function ConsultationEditor({
           atipico_confirmado: preview.hayAtipicos,
         });
         feedback('Consulta actualizada.');
-        router.dismissTo(`/paciente/consulta/${consultation.id_consulta}`);
+        allowAndRun(() => router.dismissTo(`/paciente/consulta/${consultation.id_consulta}`));
       } else {
         const saved = await guardarConsulta({
           id_paciente,
@@ -162,7 +172,7 @@ export function ConsultationEditor({
           atipico_confirmado: preview.hayAtipicos,
         });
         feedback('Consulta guardada.');
-        router.replace(`/paciente/consulta/${saved.consulta.id_consulta}`);
+        allowAndRun(() => router.replace(`/paciente/consulta/${saved.consulta.id_consulta}`));
       }
     } catch (reason) {
       setError(mensajeEnEspanol(reason, 'No fue posible guardar la consulta. Intenta de nuevo.'));

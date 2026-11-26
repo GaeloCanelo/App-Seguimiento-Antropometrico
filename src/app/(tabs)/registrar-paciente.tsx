@@ -14,6 +14,7 @@ import { erroresPaciente } from '../../views/utils/clinicalFormErrors';
 import { mensajeEnEspanol } from '../../views/utils/formErrors';
 import { folioAutomatico } from '../../views/utils/patientDisplay';
 import { dateFromField } from '../../views/utils/clinicalDisplay';
+import { useUnsavedChangesGuard } from '../../views/utils/useUnsavedChangesGuard';
 
 export default function RegistrarPacienteScreen() {
   const ui = useUI();
@@ -27,6 +28,18 @@ export default function RegistrarPacienteScreen() {
   const [error, setError] = useState<string | null>(null);
   const [fields, setFields] = useState<Partial<Record<string, string>>>({});
   const [guardando, setGuardando] = useState(false);
+  const dirty = Boolean(
+    nombre.trim() || fechaNacimiento || sexo !== 'M' || (manual && folio.trim()),
+  );
+  const { confirmExit, allowAndRun } = useUnsavedChangesGuard(dirty);
+
+  const resetForm = () => {
+    setFolio('');
+    setManual(false);
+    setNombre('');
+    setSexo('M');
+    setFechaNacimiento('');
+  };
 
   const guardar = async () => {
     setError(null);
@@ -42,13 +55,9 @@ export default function RegistrarPacienteScreen() {
     setGuardando(true);
     try {
       const creado = await registrarPaciente(values);
-      setFolio('');
-      setManual(false);
-      setNombre('');
-      setSexo('M');
-      setFechaNacimiento('');
+      resetForm();
       feedback('Paciente registrado.');
-      router.push(`/paciente/${creado.id_paciente}`);
+      allowAndRun(() => router.push(`/paciente/${creado.id_paciente}`));
     } catch (err: unknown) {
       setError(mensajeEnEspanol(err, 'No fue posible guardar el paciente.'));
     } finally {
@@ -62,7 +71,12 @@ export default function RegistrarPacienteScreen() {
       masthead={
         <Masthead
           title="Registrar paciente"
-          onBack={() => router.navigate('/(tabs)/pacientes')}
+          onBack={() =>
+            confirmExit(() => {
+              resetForm();
+              router.navigate('/(tabs)/pacientes');
+            })
+          }
           compact
         />
       }

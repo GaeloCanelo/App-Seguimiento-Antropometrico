@@ -14,6 +14,7 @@ import { erroresPaciente } from '../../../views/utils/clinicalFormErrors';
 import { mensajeEnEspanol } from '../../../views/utils/formErrors';
 import { folioVisible } from '../../../views/utils/patientDisplay';
 import { dateForField, dateFromField } from '../../../views/utils/clinicalDisplay';
+import { useUnsavedChangesGuard } from '../../../views/utils/useUnsavedChangesGuard';
 
 export default function EditarPacienteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -44,6 +45,12 @@ function Editor({ patient }: { patient: Paciente }) {
   const [error, setError] = useState<string | null>(null);
   const [fields, setFields] = useState<Partial<Record<string, string>>>({});
   const [guardando, setGuardando] = useState(false);
+  const dirty =
+    nombre !== patient.nombre ||
+    sexo !== patient.sexo ||
+    fecha !== dateForField(patient.fecha_nacimiento) ||
+    (editarFolio && folio !== patient.folio_clinico);
+  const { allowAndRun } = useUnsavedChangesGuard(dirty);
 
   const guardar = async () => {
     setError(null);
@@ -63,7 +70,7 @@ function Editor({ patient }: { patient: Paciente }) {
         ...values,
       });
       feedback('Cambios del paciente guardados.');
-      router.dismissTo(`/paciente/${patient.id_paciente}`);
+      allowAndRun(() => router.dismissTo(`/paciente/${patient.id_paciente}`));
     } catch (reason) {
       setError(mensajeEnEspanol(reason, 'No fue posible actualizar al paciente.'));
     } finally {

@@ -1,5 +1,5 @@
 import { folioVisible } from '../../../../views/utils/patientDisplay';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import {
@@ -15,6 +15,7 @@ import {
 } from '../../../../services/pdfReportService';
 import { useResultsViewModel } from '../../../../viewmodels/useResultsViewModel';
 import { ClinicalScreen } from '../../../../views/components/ClinicalScreen';
+import { useDialog } from '../../../../views/components/DialogProvider';
 import { ZoomableGrowthCurve } from '../../../../views/components/ZoomableGrowthCurve';
 import { KidoLogCard } from '../../../../views/components/KidoLogCard';
 import {
@@ -28,9 +29,11 @@ import { PrimaryButton } from '../../../../views/components/PrimaryButton';
 import { useAppearance, useThemedStyles } from '../../../../views/theme/ThemeProvider';
 import type { KidoLogTheme } from '../../../../views/theme/tokens';
 import { displayDate } from '../../../../views/utils/clinicalDisplay';
+import { mensajeEnEspanol } from '../../../../views/utils/formErrors';
 import { indicatorDesign, indicatorOptions } from '../../../../views/utils/indicators';
 
 export default function ReportePdfScreen() {
+  const dialog = useDialog();
   const styles = useThemedStyles(createStyles);
   const { mode, theme } = useAppearance();
   const ui = useUI();
@@ -98,8 +101,24 @@ export default function ReportePdfScreen() {
         historialConsultas,
         indicadorGrafica,
       });
+      dialog(
+        'Exportar PDF',
+        'Guarda o comparte el reporte desde las opciones del dispositivo.',
+        [
+          { text: 'Cerrar', style: 'cancel' },
+          {
+            text: 'Ver expediente',
+            onPress: () => router.dismissTo(`/paciente/${paciente.id_paciente}`),
+          },
+        ],
+      );
     } catch (reason) {
-      setExportError(reason instanceof Error ? reason.message : 'No se pudo compartir el reporte.');
+      const msg = mensajeEnEspanol(reason, 'No se pudo crear el documento. Puedes reintentar.');
+      setExportError(msg);
+      dialog('Error al generar PDF', msg, [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Reintentar', onPress: () => void exportar() },
+      ]);
     } finally {
       exporting.current = false;
       setExportando(false);

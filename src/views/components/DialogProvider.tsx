@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Keyboard, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStyles } from '../theme/ThemeProvider';
+import type { KidoLogTheme } from '../theme/tokens';
 import { Notice, useUI } from './KidoLogUI';
 import { PrimaryButton } from './PrimaryButton';
 import { SurfaceModal } from './SurfaceModal';
@@ -15,6 +17,7 @@ const FeedbackContext = createContext<((text: string) => void) | null>(null);
 const DialogContext = createContext<ShowDialog | null>(null);
 
 export function DialogProvider({ children }: { children: ReactNode }) {
+  const styles = useThemedStyles(createStyles);
   const ui = useUI();
   const { top } = useSafeAreaInsets();
   const [feedback, setFeedback] = useState<{ text: string } | null>(null);
@@ -54,13 +57,28 @@ export function DialogProvider({ children }: { children: ReactNode }) {
         <SurfaceModal
           onClose={() => activate(dialog.actions.find((action) => action.style === 'cancel'))}
         >
+          {(() => {
+            const destructive = dialog.actions.some((action) => action.style === 'destructive');
+            return (
+              <View style={[styles.badge, destructive ? styles.dangerBadge : styles.infoBadge]}>
+                <Text
+                  style={[
+                    styles.badgeText,
+                    destructive ? styles.dangerBadgeText : styles.infoBadgeText,
+                  ]}
+                >
+                  {destructive ? '!' : 'i'}
+                </Text>
+              </View>
+            );
+          })()}
           <Text accessibilityRole="header" style={ui.section}>
             {dialog.title}
           </Text>
           {dialog.message ? <Text style={ui.muted}>{dialog.message}</Text> : null}
           {dialog.actions
-            .filter((action) => action.style !== 'cancel')
-            .concat(dialog.actions.filter((action) => action.style === 'cancel'))
+            .filter((action) => action.style === 'cancel')
+            .concat(dialog.actions.filter((action) => action.style !== 'cancel'))
             .map((action) => (
               <PrimaryButton
                 key={action.text}
@@ -93,6 +111,19 @@ export function useFeedback() {
   return notify;
 }
 
-const styles = StyleSheet.create({
-  toast: { position: 'absolute', left: 20, right: 20, zIndex: 20, elevation: 4 },
-});
+const createStyles = (theme: KidoLogTheme) =>
+  StyleSheet.create({
+    toast: { position: 'absolute', left: 20, right: 20, zIndex: 20, elevation: 4 },
+    badge: {
+      width: 54,
+      height: 54,
+      borderRadius: theme.radius.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    infoBadge: { backgroundColor: theme.colors.primaryLight },
+    dangerBadge: { backgroundColor: theme.colors.dangerLight },
+    badgeText: { ...theme.typography.screenTitle, fontSize: 22 },
+    infoBadgeText: { color: theme.colors.primaryInk },
+    dangerBadgeText: { color: theme.colors.danger },
+  });

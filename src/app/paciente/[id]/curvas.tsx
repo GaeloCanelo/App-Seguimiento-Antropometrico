@@ -21,6 +21,7 @@ import {
   ScreenFeedback,
   useUI,
 } from '../../../views/components/KidoLogUI';
+import { PrimaryButton } from '../../../views/components/PrimaryButton';
 import { displayDate } from '../../../views/utils/clinicalDisplay';
 import {
   classificationInk,
@@ -137,32 +138,39 @@ export default function CurvasCrecimientoScreen() {
         {chart.puntosPaciente.length ? ' · Toca un punto para ver su consulta.' : ''}
       </Text>
       {point ? (
-        <KidoLogCard style={ui.row}>
-          <DesignSvg name="chart" size={22} />
-          <View style={ui.grow}>
-            <Text style={ui.title}>
-              Consulta seleccionada · {displayDate(point.fecha_consulta)}
-            </Text>
-            <Text style={ui.muted}>
-              {point.valorObservado.toFixed(2)} {chart.unidadY} · Z {point.puntajeZ.toFixed(2)} · P
-              {point.percentil.toFixed(1)}
-            </Text>
-            <Text
-              style={[
-                ui.muted,
-                {
-                  color: classificationInk(
-                    clasificarIndicador(indicador, point.puntajeZ).severidad,
-                    theme,
-                    tone.ink,
-                  ),
-                },
-              ]}
-            >
-              {point.clasificacionEtiqueta}
-              {point.esAtipico ? ' · Atípico' : ''}
-            </Text>
+        <KidoLogCard style={{ gap: theme.spacing.compact }}>
+          <View style={ui.row}>
+            <DesignSvg name="chart" size={22} />
+            <View style={ui.grow}>
+              <Text style={ui.title}>
+                Consulta seleccionada · {displayDate(point.fecha_consulta)}
+              </Text>
+              <Text style={ui.muted}>
+                {point.valorObservado.toFixed(2)} {chart.unidadY} · Z {point.puntajeZ.toFixed(2)} · P
+                {point.percentil.toFixed(1)}
+              </Text>
+              <Text
+                style={[
+                  ui.muted,
+                  {
+                    color: classificationInk(
+                      clasificarIndicador(indicador, point.puntajeZ).severidad,
+                      theme,
+                      tone.ink,
+                    ),
+                  },
+                ]}
+              >
+                {point.clasificacionEtiqueta}
+                {point.esAtipico ? ' · Atípico' : ''}
+              </Text>
+            </View>
           </View>
+          <PrimaryButton
+            title="Ver consulta"
+            variant="secondary"
+            onPress={() => router.push(`/paciente/consulta/${point.id_consulta}`)}
+          />
         </KidoLogCard>
       ) : (
         <Text style={ui.muted}>

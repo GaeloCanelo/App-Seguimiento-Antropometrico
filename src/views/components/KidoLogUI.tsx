@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -222,6 +221,34 @@ export function ScreenFrame({
   );
 }
 
+export function LoadingSkeleton({
+  title = 'Recuperando expedientes',
+  description = 'Estamos preparando la información local.',
+}: {
+  title?: string;
+  description?: string;
+}) {
+  const styles = useThemedStyles(createStyles);
+  const ui = useUI();
+  return (
+    <View style={styles.skeletonGroup} accessibilityLabel={title}>
+      {[0, 1, 2].map((index) => (
+        <View key={index} style={styles.skeletonCard}>
+          <View style={styles.skeletonAvatar} />
+          <View style={styles.skeletonLines}>
+            <View style={styles.skeletonLinePrimary} />
+            <View style={styles.skeletonLineSecondary} />
+          </View>
+        </View>
+      ))}
+      <View style={styles.skeletonCopy}>
+        <Text style={ui.section}>{title}</Text>
+        <Text style={[ui.muted, styles.skeletonText]}>{description}</Text>
+      </View>
+    </View>
+  );
+}
+
 export function ScreenFeedback({
   loading,
   error,
@@ -232,16 +259,8 @@ export function ScreenFeedback({
   empty: string;
 }) {
   const styles = useThemedStyles(createStyles);
-  const theme = useTheme();
   const ui = useUI();
-  if (loading)
-    return (
-      <ActivityIndicator
-        accessibilityLabel="Cargando"
-        color={theme.colors.primaryInk}
-        style={styles.feedback}
-      />
-    );
+  if (loading) return <LoadingSkeleton title="Cargando datos" />;
   if (error) return <Notice tone="error">{error}</Notice>;
   return <Text style={[ui.muted, styles.feedback]}>{empty}</Text>;
 }
@@ -350,6 +369,38 @@ const createStyles = (theme: KidoLogTheme) =>
     },
     pressed: { opacity: 0.65 },
     feedback: { textAlign: 'center', marginVertical: theme.spacing.md },
+    skeletonGroup: { gap: theme.spacing.md, paddingVertical: theme.spacing.xs },
+    skeletonCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.md,
+      padding: theme.spacing.md,
+      borderRadius: theme.radius.card,
+      borderWidth: 1,
+      borderColor: theme.colors.cardBorder,
+      backgroundColor: theme.colors.surface,
+    },
+    skeletonAvatar: {
+      width: 46,
+      height: 46,
+      borderRadius: theme.radius.lg,
+      backgroundColor: theme.colors.primaryLight,
+    },
+    skeletonLines: { flex: 1, gap: theme.spacing.sm },
+    skeletonLinePrimary: {
+      width: '62%',
+      height: 10,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.primaryLight,
+    },
+    skeletonLineSecondary: {
+      width: '40%',
+      height: 8,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.border,
+    },
+    skeletonCopy: { alignItems: 'center', gap: theme.spacing.xs, marginTop: theme.spacing.sm },
+    skeletonText: { textAlign: 'center' },
     choicesGroup: { gap: theme.spacing.xs },
     choices: { flexDirection: 'row', gap: theme.spacing.sm },
     choice: {

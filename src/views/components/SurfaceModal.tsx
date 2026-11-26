@@ -27,6 +27,7 @@ export function SurfaceModal({
       <SafeAreaView style={styles.viewport}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessible={false} />
         <View accessibilityViewIsModal style={[styles.card, wide && styles.wideCard]}>
+          <View style={styles.handle} />
           <ScrollView
             bounces={false}
             contentInsetAdjustmentBehavior="never"
@@ -60,6 +61,14 @@ const createStyles = (theme: KidoLogTheme) =>
       overflow: 'hidden',
     },
     wideCard: { width: '98%' },
+    handle: {
+      width: 48,
+      height: 5,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.border,
+      alignSelf: 'center',
+      marginTop: theme.spacing.compact,
+    },
     wideContent: { paddingHorizontal: theme.spacing.sm },
     content: { padding: theme.spacing.md, gap: theme.spacing.compact },
   });

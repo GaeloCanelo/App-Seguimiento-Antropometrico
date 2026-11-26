@@ -1,12 +1,12 @@
 import { Link, router, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useApp } from '../../viewmodels/AppProvider';
 import { usePatientsViewModel } from '../../viewmodels/usePatientsViewModel';
 import { FormField } from '../../views/components/FormField';
 import { KidoLogCard } from '../../views/components/KidoLogCard';
 import { KidoLogIcon } from '../../views/components/KidoLogIcon';
-import { Notice, ScreenFrame, useUI } from '../../views/components/KidoLogUI';
+import { LoadingSkeleton, Notice, ScreenFrame, useUI } from '../../views/components/KidoLogUI';
 import { Masthead } from '../../views/components/Masthead';
 import { PatientCard } from '../../views/components/PatientCard';
 import { PrimaryButton } from '../../views/components/PrimaryButton';
@@ -127,11 +127,7 @@ export default function PacientesScreen() {
         }
         ListEmptyComponent={
           cargando ? (
-            <ActivityIndicator
-              style={styles.spinner}
-              color={theme.colors.primaryInk}
-              accessibilityLabel="Cargando pacientes"
-            />
+            <LoadingSkeleton />
           ) : error ? undefined : (
             <KidoLogCard style={styles.empty}>
               <View style={styles.emptyIcon}>
@@ -206,5 +202,4 @@ const createStyles = (theme: KidoLogTheme) =>
       backgroundColor: theme.colors.primaryLight,
     },
     centerText: { textAlign: 'center' },
-    spinner: { paddingVertical: theme.spacing.xl },
   });
