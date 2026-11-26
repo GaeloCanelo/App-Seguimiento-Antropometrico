@@ -1,111 +1,123 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Sexo } from '../../../domain';
-import { useApp } from '../../../viewmodels/AppProvider';
+import { useState } from 'react';
+import { Pressable, Text } from 'react-native';
+import type { Paciente, Sexo } from '../../../domain';
+import { usePatient } from '../../../viewmodels/usePatient';
 import { usePatientsViewModel } from '../../../viewmodels/usePatientsViewModel';
+import { ClinicalScreen } from '../../../views/components/ClinicalScreen';
+import { useFeedback } from '../../../views/components/DialogProvider';
 import { FormField } from '../../../views/components/FormField';
+import { GradientCard, Notice, ScreenFeedback, useUI } from '../../../views/components/KidoLogUI';
+import { PatientFields } from '../../../views/components/PatientFields';
 import { PrimaryButton } from '../../../views/components/PrimaryButton';
-import { ResponsiveContainer } from '../../../views/components/ResponsiveContainer';
-import { theme } from '../../../views/theme/tokens';
+import { erroresPaciente } from '../../../views/utils/clinicalFormErrors';
+import { mensajeEnEspanol } from '../../../views/utils/formErrors';
+import { folioVisible } from '../../../views/utils/patientDisplay';
+import { dateForField, dateFromField } from '../../../views/utils/clinicalDisplay';
+import { useUnsavedChangesGuard } from '../../../views/utils/useUnsavedChangesGuard';
 
-/** CU-10: Actualizar datos de identificación del paciente (recalcula consultas). */
 export default function EditarPacienteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { pacienteRepo } = useApp();
+  const { patient, loading, error } = usePatient(id);
+  return (
+    <ClinicalScreen
+      title="Editar paciente"
+      info={patient ? 'Cambios en sexo o nacimiento recalculan consultas.' : undefined}
+    >
+      {patient ? (
+        <Editor key={patient.id_paciente} patient={patient} />
+      ) : (
+        <ScreenFeedback loading={loading} error={error} empty="Paciente no encontrado." />
+      )}
+    </ClinicalScreen>
+  );
+}
+
+function Editor({ patient }: { patient: Paciente }) {
+  const feedback = useFeedback();
+  const ui = useUI();
   const { actualizarPaciente } = usePatientsViewModel();
-
-  const [folio, setFolio] = useState('');
-  const [nombre, setNombre] = useState('');
-  const [sexo, setSexo] = useState<Sexo>('M');
-  const [fechaNacimiento, setFechaNacimiento] = useState('');
+  const [folio, setFolio] = useState(patient.folio_clinico);
+  const [editarFolio, setEditarFolio] = useState(false);
+  const [nombre, setNombre] = useState(patient.nombre);
+  const [sexo, setSexo] = useState<Sexo>(patient.sexo);
+  const [fecha, setFecha] = useState(dateForField(patient.fecha_nacimiento));
   const [error, setError] = useState<string | null>(null);
+  const [fields, setFields] = useState<Partial<Record<string, string>>>({});
   const [guardando, setGuardando] = useState(false);
-
-  useEffect(() => {
-    if (!pacienteRepo || !id) return;
-    pacienteRepo.obtenerPorId(id).then((p) => {
-      if (!p) return;
-      setFolio(p.folio_clinico);
-      setNombre(p.nombre);
-      setSexo(p.sexo);
-      setFechaNacimiento(p.fecha_nacimiento);
-    });
-  }, [id, pacienteRepo]);
+  const dirty =
+    nombre !== patient.nombre ||
+    sexo !== patient.sexo ||
+    fecha !== dateForField(patient.fecha_nacimiento) ||
+    (editarFolio && folio !== patient.folio_clinico);
+  const { allowAndRun } = useUnsavedChangesGuard(dirty);
 
   const guardar = async () => {
-    if (!id) return;
     setError(null);
+    const values = {
+      folio_clinico: editarFolio ? folio : patient.folio_clinico,
+      nombre,
+      sexo,
+      fecha_nacimiento: dateFromField(fecha),
+    };
+    const issues = erroresPaciente(values);
+    setFields(issues);
+    if (Object.keys(issues).length) return;
     setGuardando(true);
     try {
       await actualizarPaciente({
-        id_paciente: id,
-        folio_clinico: folio,
-        nombre,
-        sexo,
-        fecha_nacimiento: fechaNacimiento,
+        id_paciente: patient.id_paciente,
+        ...values,
       });
-      router.back();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'No fue posible actualizar al paciente.');
+      feedback('Cambios del paciente guardados.');
+      allowAndRun(() => router.dismissTo(`/paciente/${patient.id_paciente}`));
+    } catch (reason) {
+      setError(mensajeEnEspanol(reason, 'No fue posible actualizar al paciente.'));
     } finally {
       setGuardando(false);
     }
   };
 
   return (
-    <ResponsiveContainer variant="form">
-      {error ? <Text style={styles.errorBox}>{error}</Text> : null}
-      <FormField label="Folio clínico" value={folio} onChangeText={setFolio} />
-      <FormField label="Nombre completo" value={nombre} onChangeText={setNombre} />
-
-      <Text style={styles.label}>Sexo</Text>
-      <View style={styles.row}>
-        {(['M', 'F'] as Sexo[]).map((op) => (
-          <Pressable
-            key={op}
-            onPress={() => setSexo(op)}
-            style={[styles.chip, sexo === op && styles.chipSelected]}
-          >
-            <Text style={[styles.chipText, sexo === op && styles.chipTextSelected]}>
-              {op === 'M' ? 'Masculino' : 'Femenino'}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <FormField
-        label="Fecha de nacimiento"
-        value={fechaNacimiento}
-        onChangeText={setFechaNacimiento}
-        placeholder="AAAA-MM-DD"
+    <>
+      <GradientCard>
+        <Text style={ui.title}>Folio {folioVisible(patient.folio_clinico)}</Text>
+        <Pressable accessibilityRole="button" onPress={() => setEditarFolio((value) => !value)}>
+          <Text style={ui.link}>
+            {editarFolio ? 'Conservar folio actual' : 'Corregir folio clínico'}
+          </Text>
+        </Pressable>
+      </GradientCard>
+      {editarFolio ? (
+        <FormField
+          label="Folio clínico"
+          value={folio}
+          error={fields.folio_clinico}
+          onChangeText={(value) => {
+            setFolio(value);
+            setFields((previous) => ({ ...previous, folio_clinico: undefined }));
+          }}
+        />
+      ) : null}
+      <PatientFields
+        editing
+        name={nombre}
+        nameError={fields.nombre}
+        onName={(value) => {
+          setNombre(value);
+          setFields((previous) => ({ ...previous, nombre: undefined }));
+        }}
+        sex={sexo}
+        onSex={setSexo}
+        date={fecha}
+        dateError={fields.fecha_nacimiento}
+        onDate={(value) => {
+          setFecha(value);
+          setFields((previous) => ({ ...previous, fecha_nacimiento: undefined }));
+        }}
       />
-
-      <PrimaryButton title="Guardar cambios" onPress={guardar} loading={guardando} />
-    </ResponsiveContainer>
+      {error ? <Notice tone="error">{error}</Notice> : null}
+      <PrimaryButton title="Guardar cambios" loading={guardando} onPress={guardar} />
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  label: { fontSize: 14, fontWeight: '600', color: theme.colors.text, marginBottom: 6 },
-  row: { flexDirection: 'row', gap: 10, marginBottom: theme.spacing.md },
-  chip: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-    alignItems: 'center',
-  },
-  chipSelected: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primaryLight },
-  chipText: { color: theme.colors.text, fontWeight: '600' },
-  chipTextSelected: { color: theme.colors.primary },
-  errorBox: {
-    backgroundColor: '#FDECEA',
-    color: theme.colors.danger,
-    padding: 12,
-    borderRadius: theme.radius.sm,
-    marginBottom: theme.spacing.md,
-  },
-});

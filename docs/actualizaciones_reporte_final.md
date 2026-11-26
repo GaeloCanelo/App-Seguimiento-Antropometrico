@@ -29,7 +29,7 @@ Este documento registra todos los ajustes técnicos, arquitectónicos y de prueb
   * **Autenticación:** `/(auth)/login`, `/(auth)/register`, `/(auth)/forgot-password` (`CU-01` a `CU-03`).
   * **Navegación inferior (Tabs):** `/(tabs)/pacientes` (`CU-08`), `/(tabs)/registrar-paciente` (`CU-07`), `/(tabs)/cuenta` (`CU-04` a `CU-06`).
   * **Flujo clínico:** `/paciente/[id]` (`CU-09`), `/paciente/[id]/editar` (`CU-10`), `/paciente/[id]/nueva-consulta` (`CU-12`, `CU-15`), `/paciente/[id]/curvas` (`CU-18`), `/paciente/consulta/[idConsulta]` (`CU-17`), `/paciente/consulta/[idConsulta]/editar` (`CU-13`), `/paciente/consulta/[idConsulta]/reporte` (`CU-19`).
-  * **Responsividad (`RNF-06`):** `ResponsiveContainer` y `useResponsiveLayout` adaptan formularios centrados en tabletas (`>= 768 px`) y cuadrícula de 2 columnas en la lista de pacientes.
+  * **Responsividad y apariencia (`RNF-06`):** `KidoLogUI` (`FormScroll`, `ScreenFrame`, `maxWidth: 680`), `ClinicalScreen` y `ThemeProvider` adaptan los formularios y tarjetas centrados en pantallas amplias, con soporte para modo claro, oscuro y del sistema.
   * **Acción para el equipo:** Capturar pantallas reales (o exportar los diseños de Figma) e insertarlas en esta sección.
 
 ---

@@ -1,0 +1,11 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="21" height="21" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="icon/lucide/cloud" clip-path="url(#clip0_0_81)">
+<path id="Vector" d="M17.5 14.875C18.3248 14.695 19.0567 14.2229 19.5609 13.5458C20.0651 12.8687 20.3076 12.0322 20.2436 11.1904C20.1797 10.3487 19.8137 9.55836 19.213 8.96517C18.6123 8.37198 17.8175 8.01588 16.975 7.9625C16.4551 6.71924 15.5398 5.68213 14.3708 5.01183C13.2017 4.34154 11.8443 4.07549 10.5087 4.25489C9.17311 4.4343 7.93398 5.04915 6.98327 6.00418C6.03256 6.95922 5.42334 8.20113 5.25 9.5375C4.42617 9.71155 3.70522 10.2057 3.24576 10.9113C2.7863 11.6169 2.62595 12.4762 2.8 13.3C2.97405 14.1238 3.46823 14.8448 4.17384 15.3042C4.87944 15.7637 5.73867 15.924 6.5625 15.75H16.625" stroke-width="1.6625" stroke-linecap="round" stroke-linejoin="round" stroke="#60419F"/>
+<path id="Vector_2" d="M13.125 12.25L10.5 9.625L7.875 12.25M10.5 9.625V18.375" stroke-width="1.6625" stroke-linecap="round" stroke-linejoin="round" stroke="#60419F"/>
+</g>
+<defs>
+<clipPath id="clip0_0_81">
+<rect width="21" height="21" fill="white"/>
+</clipPath>
+</defs>
+</svg>

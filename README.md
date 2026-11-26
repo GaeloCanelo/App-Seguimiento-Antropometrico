@@ -11,7 +11,7 @@ Aplicación móvil **Local-First** dirigida a médicos pediatras y de primer con
 
 ## Stack Tecnológico
 
-* **Framework móvil:** React Native + Expo (Development Build) + TypeScript (`strict: true`)
+* **Framework móvil:** React Native + Expo SDK 58 + TypeScript (`strict: true`)
 * **Arquitectura:** MVVM + Repository Pattern (Local-First)
 * **Persistencia local:** SQLite (`expo-sqlite`) con integridad referencial y transacciones atómicas
 * **Autenticación y respaldo remoto:** Firebase Authentication + Cloud Firestore
@@ -39,20 +39,30 @@ docs/                  # Documentación técnica complementaria (Tabla 2 de clas
 
 ---
 
-## Comandos Principales
+## Probar KidoLog en Expo Go
 
-```bash
-# Instalar dependencias
-npm install
+Usa Node.js 24 y una versión de Expo Go compatible con Expo SDK 58.
 
-# Verificar tipos TypeScript
+1. Clona la rama de KidoLog e instala las dependencias del archivo de bloqueo.
+
+   ```sh
+   git clone --branch feature/kidolog-ui --single-branch https://github.com/GaeloCanelo/App-Seguimiento-Antropometrico.git
+   cd App-Seguimiento-Antropometrico
+   npm ci
+   ```
+
+2. Crea un archivo `.env` local a partir de `.env.example`. Completa las seis variables con la configuración de la aplicación web de tu proyecto de Firebase. Activa el acceso con correo y contraseña y configura Firestore según la [guía de Firebase](./docs/firebase_setup.md).
+3. Ejecuta `npx expo start --go`. Conecta el teléfono y la computadora a la misma red y abre el QR con la cámara del iPhone o con el lector de Expo Go en Android.
+4. Registra una cuenta de prueba y agrega un paciente ficticio y una consulta. Desde Resultados OMS, toca un indicador para abrir su curva o abre Reporte PDF para exportar la consulta.
+
+## Verificación local
+
+Las pruebas usan datos de ejemplo y SQLite en memoria. No requieren una cuenta de Firebase ni un archivo `.env`.
+
+```sh
 npm run typecheck
-
-# Ejecutar pruebas unitarias (AnthroEngine y reglas clínicas)
-npm test
-
-# Iniciar servidor de desarrollo Expo
-npx expo start
+npm run lint
+npm test -- --runInBand
 ```
 
 Consulta [CONTRIBUTING.md](./CONTRIBUTING.md) para el flujo de ramas (`main`, `develop`, `feature/*`) y reglas del equipo.
